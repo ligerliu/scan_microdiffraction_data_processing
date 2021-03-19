@@ -14,6 +14,7 @@ import re
 import warnings
 warnings.filterwarnings('ignore')
 from multi_scan_qphi_proc import *
+from multi_scan_Iq_proc import *
 
 if __name__ == '__main__':
     proposal_path = "/data/visitor/sc5005/id13"
@@ -31,5 +32,8 @@ if __name__ == '__main__':
                   ]
     samples = samples_for_process(t1,sample_keywords)
     tm = time.time()
-    auto_proc(t1,samples,save_path,num_core=16)
-    print(time.time()-tm)
+    auto_proc_Iq(t1,samples,save_path,num_core=16)
+    print('process time',time.time()-tm,'\n\n\n\n')
+    tm = time.time()
+    auto_proc_qphi(t1,samples,save_path,num_core=16)
+    print('process time',time.time()-tm)

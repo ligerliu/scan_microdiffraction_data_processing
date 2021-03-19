@@ -4,28 +4,30 @@ import matplotlib.pyplot as plt
 from functools import partial
 import h5py
 
-def load_proc(fn):
+def load_proc(fn,proc_type="integrate2d"):
     # load the data from proc hdf, specific formate for JL analysis
     # maybe change the input to allow load partially later
     with h5py.File(fn,"r") as f:
-        azi       = np.array(f['angle'])#[:]
-        ct        = np.array(f['beam_intensity'])#[:]
-        qphi      = np.array(f['map_qphi'])#[:]
-        q         = np.array(f['q'])#[:]
+        fc = f[proc_type]
+        azi       = np.array(fc['angle'])#[:]
+        ct        = np.array(fc['beam_intensity'])#[:]
+        qphi      = np.array(fc['map_qphi'])#[:]
+        q         = np.array(fc['q'])#[:]
         # str could not be saved as dataset, thus save an attrs
-        path_list = np.array(f.attrs['origin_h5_path'])#[:]
-        path_idx  = np.array(f['path_idx'])#[:]
-        pttn_idx  = np.array(f['pttn_idx'])#[:]
+        path_list = np.array(fc.attrs['origin_h5_path'])#[:]
+        path_idx  = np.array(fc['path_idx'])#[:]
+        pttn_idx  = np.array(fc['pttn_idx'])#[:]
     return azi,ct,qphi,q,path_list,path_idx,pttn_idx
     
-def load_proc_dataset(fn,kw):
+def load_proc_dataset(fn,kw,proc_type="integrate2d"):
     # fn is the file name of '*_proc.h5' data
     # kw is keyword of h5 dataset or attribute
     with h5py.File(fn,'r') as f:
+        fc = f[proc_type]
         if kw == 'origin_h5_path':
-            return f.attrs['origin_h5_path'][:]
+            return fc.attrs['origin_h5_path'][:]
         else:
-            return np.array(f[kw])
+            return np.array(fc[kw])
     
 def sum_roi_2dmap(qphi,a,q,
             amin=None,

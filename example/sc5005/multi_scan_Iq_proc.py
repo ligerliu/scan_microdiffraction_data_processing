@@ -42,10 +42,9 @@ def jl_pyFAI_setup(obj,
         poni = poni
     return poni,mask
 
-def save_qphi_as_h5(obj,save_path,name,
+def save_Iq_as_h5(obj,save_path,name,
                     q,
-                    azi,
-                    qphi,
+                    Iq,
                     path_idx,
                     pttn_idx,
                     h5_path_list):
@@ -56,16 +55,15 @@ def save_qphi_as_h5(obj,save_path,name,
     #print("\nhdf file writinge start time:\n%5.2f sec" %(time.time()-t))
     h5_name = "{}_proc.h5".format(name)
     with h5py.File(h5_name,'a') as f:
-        if "integrate2d" in list(f):
-            del f["integrate2d"]
-        f.create_group("integrate2d")
-        fc = f['integrate2d']
+        if "integrate1d" in list(f):
+            del f["integrate1d"]
+        f.create_group("integrate1d")
+        fc = f['integrate1d']
         #fc = h5py.File(h5_name,"w")
         fc.create_dataset("beam_intensity",data=obj.ct34)
         fc.create_dataset("q",data=q)
-        fc.create_dataset("angle",data=azi)
-        fc.create_dataset("map_qphi",
-                          data=qphi,compression="gzip",
+        fc.create_dataset("Iq",
+                          data=Iq,compression="gzip",
                           #compression_opts=9
                          )
         fc.attrs["origin_h5_path"]=h5_path_list
@@ -74,14 +72,13 @@ def save_qphi_as_h5(obj,save_path,name,
         fc.create_dataset("detector_distance",data=obj.ndetx)
         #fc.close()
 
-def auto_proc_qphi(obj,
+def auto_proc_Iq(obj,
               samples,
               save_path,
               num_core= 8,
               mask    = None,
               poni    = None,
               q_npts  = 200,
-              a_npts  = 120,
               save    = True,
               data_path = 'entry_0000/measurement/data',
               **kwargs
@@ -101,7 +98,7 @@ def auto_proc_qphi(obj,
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
             ai = pyFAI.load(poni)    
             #tm = time.time()
-            res = parallel_func(scan_calculate_Iqphi,
+            res = parallel_func(scan_calculate_Iq,
                            num_core,
                            np.arange(len(path_idx.flatten())),
                            h5_list   = h5_list,
@@ -111,16 +108,14 @@ def auto_proc_qphi(obj,
                            pyfai_obj = ai,
                            mask      = mask,
                            q_npts    = q_npts,
-                           a_npts    = a_npts,
                            **kwargs
                            )
             #print(time.time()-tm)
-            q    = res[0][1]
-            azi  = res[0][2]
-            qphi = np.zeros((scan_shape[0],
+            q    = res[0][0]
+            Iq   = np.zeros((scan_shape[0],
                              scan_shape[1],
-                             res[0][0].shape[0],
-                             res[0][0].shape[1])) 
+                             len(res[0][1]),
+                             )) 
             for _ in range(len(res)):
                 #if len(idx_list) > 1:
                 #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
@@ -128,13 +123,12 @@ def auto_proc_qphi(obj,
                 #else:
                 i1 = int(_/scan_shape[1])
                 i2 = int(_%scan_shape[1])
-                qphi[i1,i2,:]   = res[_][0]
+                Iq[i1,i2,:]   = res[_][0]
             name = obj._data_name[0].split('.')[0]
             if save:
-                save_qphi_as_h5(obj,save_path,name,
+                save_Iq_as_h5(obj,save_path,name,
                     q    = q,
-                    azi  = azi,
-                    qphi = qphi,
+                    Iq   = Iq,
                     path_idx = path_idx,
                     pttn_idx = pttn_idx,
                     h5_path_list = h5_list)
