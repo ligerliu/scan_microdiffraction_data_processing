@@ -37,14 +37,14 @@ samples = samples_for_process(t1,sample_keywords)
 total_pttns,scan_shape,idx_list = scan_info(t1)
 h5_list,path_idx,pttn_idx = scan_h5_data_info(t1,scan_shape,idx_list)
 
-import time
-tm = time.time()
-res = parallel_func(scan_pttn_roi_sum,12,np.arange(len(path_idx.flatten())),
-                   h5_list=h5_list,
-                   path_idx=path_idx.flatten(),
-                   pttn_idx=pttn_idx.flatten(),
-                   data_path=data_path,
-                   left_top=(1068,1140),
-                   right_bottom=(1222,1322),)
-print(time.time()-tm)
-roi = np.array(res).reshape(scan_shape)
+#import time
+#tm = time.time()
+#res = parallel_func(scan_pttn_roi_sum,12,np.arange(len(path_idx.flatten())),
+#                   h5_list=h5_list,
+#                   path_idx=path_idx.flatten(),
+#                   pttn_idx=pttn_idx.flatten(),
+#                   data_path=data_path,
+#                   left_top=(1068,1140),
+#                   right_bottom=(1222,1322),)
+#print(time.time()-tm)
+#roi = np.array(res).reshape(scan_shape)
