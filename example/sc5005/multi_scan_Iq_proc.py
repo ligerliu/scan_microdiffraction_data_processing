@@ -81,23 +81,20 @@ def auto_proc_Iq(obj,
               q_npts  = 200,
               save    = True,
               data_path = 'entry_0000/measurement/data',
+              units   = 'q_A^-1',
               **kwargs
               ):
     failed_pattern = []
     for ii in samples.keys():
         try:
             obj.keyword_search(*samples[ii])
-            poni,mask = jl_pyFAI_setup(obj,poni=poni,mask=mask,save_path=save_path)
+            poni_file,mask_file = jl_pyFAI_setup(obj,poni=poni,
+                                    mask=mask,save_path=save_path)
             total_pttns,scan_shape,idx_list = scan_info(obj)
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
-            ai = pyFAI.load(poni)    
+            ai = pyFAI.load(poni_file)    
             #tm = time.time()
-            obj.keyword_search(*samples[ii])
-            poni,mask = jl_pyFAI_setup(obj,poni=poni,mask=mask,save_path=save_path)
-            total_pttns,scan_shape,idx_list = scan_info(obj)
-            h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
-            ai = pyFAI.load(poni)    
-            #tm = time.time()
+            
             res = parallel_func(scan_calculate_Iq,
                            num_core,
                            np.arange(len(path_idx.flatten())),
@@ -106,12 +103,15 @@ def auto_proc_Iq(obj,
                            pttn_idx  = pttn_idx.flatten(),
                            data_path = data_path,
                            pyfai_obj = ai,
-                           mask      = mask,
+                           mask      = mask_file,
                            q_npts    = q_npts,
                            **kwargs
                            )
             #print(time.time()-tm)
             q    = res[0][0]
+            if unit == 'q_A^-1':
+                #pyFAi integrate1d only support q_nm^-1 2theta and rm
+                q /= 10.
             Iq   = np.zeros((scan_shape[0],
                              scan_shape[1],
                              len(res[0][1]),
@@ -123,7 +123,7 @@ def auto_proc_Iq(obj,
                 #else:
                 i1 = int(_/scan_shape[1])
                 i2 = int(_%scan_shape[1])
-                Iq[i1,i2,:]   = res[_][0]
+                Iq[i1,i2,:]   = res[_][1]
             name = obj._data_name[0].split('.')[0]
             if save:
                 save_Iq_as_h5(obj,save_path,name,

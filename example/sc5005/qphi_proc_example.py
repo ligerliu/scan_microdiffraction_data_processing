@@ -29,11 +29,12 @@ if __name__ == '__main__':
                   ['BM1N'],
                   ['BM1D'],
                   #['mount01_DS_a_mount01_x50_M1_BM1N_p01_0013_2.1'],
+                  #['Lox'],
                   ]
     samples = samples_for_process(t1,sample_keywords)
     tm = time.time()
     auto_proc_Iq(t1,samples,save_path,num_core=16)
-    print('process time',time.time()-tm,'\n\n\n\n')
-    tm = time.time()
+    #print('process time',time.time()-tm,'\n\n\n\n')
+    #tm = time.time()
     auto_proc_qphi(t1,samples,save_path,num_core=16)
     print('process time',time.time()-tm)

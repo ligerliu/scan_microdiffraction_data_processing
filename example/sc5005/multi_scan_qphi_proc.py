@@ -90,16 +90,11 @@ def auto_proc_qphi(obj,
     for ii in samples.keys():
         try:
             obj.keyword_search(*samples[ii])
-            poni,mask = jl_pyFAI_setup(obj,poni=poni,mask=mask,save_path=save_path)
+            poni_file,mask_file = jl_pyFAI_setup(obj,poni=poni,
+                                  mask=mask,save_path=save_path)
             total_pttns,scan_shape,idx_list = scan_info(obj)
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
-            ai = pyFAI.load(poni)    
-            #tm = time.time()
-            obj.keyword_search(*samples[ii])
-            poni,mask = jl_pyFAI_setup(obj,poni=poni,mask=mask,save_path=save_path)
-            total_pttns,scan_shape,idx_list = scan_info(obj)
-            h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
-            ai = pyFAI.load(poni)    
+            ai = pyFAI.load(poni_file)    
             #tm = time.time()
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
@@ -109,7 +104,7 @@ def auto_proc_qphi(obj,
                            pttn_idx  = pttn_idx.flatten(),
                            data_path = data_path,
                            pyfai_obj = ai,
-                           mask      = mask,
+                           mask      = mask_file,
                            q_npts    = q_npts,
                            a_npts    = a_npts,
                            **kwargs
