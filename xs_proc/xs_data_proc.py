@@ -250,14 +250,85 @@ def scan_pttn_roi_sum(num,
                  path_idx  = None,
                  pttn_idx  = None,
                  data_path = None,
+                 llm       = 0,
+                 hlm       = 1e6,
                  left_top     = [0,0],
-                 right_bottom = [-1,-1] ,
+                 right_bottom = [-1,-1],
+                 bkgd      = None,
+                 mask      = None,
                  **kwargs):
     h5_path  = h5_list[path_idx[num]]
     pttn_num = pttn_idx[num]
     with h5py.File(h5_path,"r") as f:
         data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
                                  left_top[0]:right_bottom[0]].astype(float)
-        data[data>1e6] = np.nan
+        data[data>hlm] = np.nan
+        data[data<llm] = np.nan
+        if not isinstance(bkgd,type(None)):
+            data -= bkgd
+        if not isinstance(mask,type(None)):
+            data[mask] = np.nan
         I = np.nanmean(data)
     return I
+
+def scan_pttn_roi(num,
+                 h5_list   = None,
+                 path_idx  = None,
+                 pttn_idx  = None,
+                 data_path = None,
+                 llm       = 0,
+                 hlm       = 1e6,
+                 left_top     = [0,0],
+                 right_bottom = [-1,-1],
+                 bkgd      = None,
+                 mask      = None,
+                 down_sample  =1,
+                 **kwargs):
+    h5_path  = h5_list[path_idx[num]]
+    pttn_num = pttn_idx[num]
+    with h5py.File(h5_path,"r") as f:
+        data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
+                                 left_top[0]:right_bottom[0]].astype(float)
+        data[data>hlm] = np.nan
+        data[data<llm] = np.nan
+        if not isinstance(bkgd,type(None)):
+            data -= bkgd
+        if not isinstance(mask,type(None)):
+            data[mask] = np.nan
+        data = data[::down_sample,::down_sample]
+    return data
+
+def stitch_roi(res,id1,id2,
+               axis1='x',
+               axis2='negative',
+               ):
+    #data list is a list of numpy array of data for stitch
+    if (id1*id2) != len(res):
+        raise ValueError("size of shape (id1*id2) should be equal to len of scan patch list")
+
+    for i in range(id1):
+        for j in range(id2):
+            data = res[j+i*id2]
+            if j == 0:
+                fast_axis = data
+            elif axis1 == 'x':
+                fast_axis = np.hstack((fast_axis,data))
+            elif axis1 == 'y':
+                fast_axis = np.vstack((fast_axis,data))
+            del data
+        if i == 0:
+            pattern = np.copy(fast_axis)
+        else:
+            if axis2 == 'negative':
+                if axis1 == 'x':
+                    pattern = np.vstack((fast_axis,pattern))
+                elif axis1 == 'y':
+                    pattern = np.hstack((fast_axis,pattern))
+            else:
+                if axis1 == 'x':
+                    pattern = np.vstack((pattern,fast_axis))
+                elif axis1 == 'y':
+                    pattern = np.hstack((pattern,fast_axis))
+        del fast_axis
+    return pattern
+

@@ -176,20 +176,26 @@ def plot_qphi(qphi,
               log=True,
               q=None,
               a=None,
+              mask=None,
+              bkgd=None,
               **kwargs):
     if isinstance(q,type(None)):
         q = np.arange(qphi.shape[1])
     if isinstance(a,type(None)):
         a = np.arange(qphi.shape[0])
+    if not isinstance(mask,type(None)):
+        qphi[mask] = np.nan
+    if not isinstance(bkgd,type(None)):
+        qphi -= bkgd
     if log:
         qphi = np.log(qphi)
     if isinstance(vmin,type(None)):
         vmin = np.nanmean(qphi)-np.nanstd(qphi)*3
     if isinstance(vmax,type(None)):
         vmax = np.nanmean(qphi)+np.nanstd(qphi)*3
-    #plt.subplots()
+    plt.subplots()
     plt.imshow(qphi,vmin=vmin,vmax=vmax,
-               extent=(q[0],q[-1],a[0],a[-1]),
+               extent=(q[0],q[-1],a[-1],a[0]),
                aspect=np.abs(q[-1]-q[0])/np.abs(a[-1]-a[0]),
                **kwargs)
     plt.ylabel(r'$\phi\,\,(^{o})$')
@@ -202,6 +208,7 @@ def plot_pttn(path,
               vmax = None,
               log  = True,
               mask = None,
+              bkgd = None,
               **kwargs):
     with h5py.File(path,'r') as f:
         d = np.copy(f[data_path][pttn]).astype(float)
@@ -213,6 +220,8 @@ def plot_pttn(path,
         vmax = np.nanmean(d)+np.nanstd(d)*3
     if not isinstance(mask,type(None)):
         d[mask] = np.nan
+    if not isinstance(bkgd,type(None)):
+        d -= bkgd
     plt.subplots()
     plt.imshow(d,vmin=vmin,vmax=vmax,
                **kwargs)
@@ -222,8 +231,10 @@ def pttn_of_int_map(int_map,
                     path_idx,
                     pttn_idx,
                     data_path='entry_0000/measurement/data',
-                    vmin = None,
-                    vmax = None,
+                    vmin1 = None,
+                    vmax1 = None,
+                    vmin2 = None,
+                    vmax2 = None,
                     log  = True,
                     mask = None,
                     zoom_xlim=(0,-1),
@@ -232,11 +243,15 @@ def pttn_of_int_map(int_map,
     zoom_xlim = np.array(zoom_xlim)
     zoom_ylim = np.array(zoom_ylim)
     fig1,ax1 = plt.subplots()
-    ax1.imshow(int_map)
+    if isinstance(vmin1,type(None)):
+        vmin1 = np.nanmean(int_map)-3*np.nanstd(int_map)
+    if isinstance(vmax1,type(None)):
+        vmax1 = np.nanmean(int_map)+3*np.nanstd(int_map)
+    ax1.imshow(int_map,vmin=vmin1,vmax=vmax1)
     def onclick(event,
                 data_path='entry_0000/measurement/data',
-                vmin = vmin,
-                vmax = vmax,
+                vmin = vmin2,
+                vmax = vmax2,
                 log  = log,
                 mask = mask,
                 **kwargs):
@@ -346,23 +361,25 @@ def plot_quiver(ori_mat,wid_mat,
 
 def plot_spot(x,y,vmin=0,vmax=30,log=False,
               qphi_plot=True,pttn_plot=False,line_plot=True,
-              qmin=1.83,qmax=1.89,amin=None,amax=None,):
-    pttn_mask = np.load('msk_file/ndet_m640.npz')['mask']
+              qmin=1.83,qmax=1.89,amin=None,amax=None,mask=None,
+              bkgd=None,):
+    #pttn_mask = np.load('msk_file/ndet_m640.npz')['mask']
     if pttn_plot:
         plt.subplots()
         plot_pttn(path_list[path_idx[y,x]],
-                  pttn_idx[y,x],log=log,
-                  vmin=vmin,vmax=vmax,mask=pttn_mask,cmap='jet')
+                  pttn_idx[y,x],log=log,bkgd=bkgd,
+                  vmin=vmin,vmax=vmax,mask=mask,cmap='jet')
     if qphi_plot:
         plt.subplots()
         plot_qphi(qphi[y,x],q=q,a=azi,vmin=vmin,
+                  bkgd=bkgd,mask=mask,
                   vmax=vmax,log=log,cmap='jet')
         if isinstance(amin,type(None)): amin = np.min(azi)
         if isinstance(amax,type(None)): amax = np.max(azi)
         plt.vlines(qmin,amin,amax,linewidth=1.5)
         plt.vlines(qmax,amin,amax,linewidth=1.5)
     if line_plot:
-        Ia = sum_roi(qphi[y,x],azi,q,qmin=qmin,qmax=qmax,mask=mask,vs_axis='a')
+        Ia = sum_roi(qphi[y,x],a=azi,q=q,qmin=qmin,qmax=qmax,mask=mask,vs_axis='a')
         plt.subplots()
         plt.plot(azi,Ia)
         plt.title(r'$reflection\,\,(0\,\,1\,\,3)')     
