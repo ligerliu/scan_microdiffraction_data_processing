@@ -260,6 +260,11 @@ def scan_pttn_roi_sum(num,
     h5_path  = h5_list[path_idx[num]]
     pttn_num = pttn_idx[num]
     with h5py.File(h5_path,"r") as f:
+        data_shape = f[data_path][0].shape
+        if right_bottom[0] == -1:
+            right_bottom[0] = data_shape[1]
+        if right_bottom[1] == -1:
+            right_bottom[1] = data_shape[0]
         data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
                                  left_top[0]:right_bottom[0]].astype(float)
         data[data>hlm] = np.nan
@@ -289,18 +294,21 @@ def scan_pttn_roi(num,
     with h5py.File(h5_path,"r") as f:
         data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
                                  left_top[0]:right_bottom[0]].astype(float)
-        data[data>hlm] = np.nan
-        data[data<llm] = np.nan
+        #data[data>hlm] = np.nan
+        #data[data<llm] = np.nan
         if not isinstance(bkgd,type(None)):
             data -= bkgd
         if not isinstance(mask,type(None)):
             data[mask] = np.nan
+        data[data>hlm] = np.nan
+        data[data<llm] = np.nan
         data = data[::down_sample,::down_sample]
     return data
 
 def stitch_roi(res,id1,id2,
                axis1='x',
-               axis2='negative',
+               axis1_direction = 'positive',
+               axis2_direction = 'negative',
                ):
     #data list is a list of numpy array of data for stitch
     if (id1*id2) != len(res):
@@ -312,14 +320,20 @@ def stitch_roi(res,id1,id2,
             if j == 0:
                 fast_axis = data
             elif axis1 == 'x':
-                fast_axis = np.hstack((fast_axis,data))
+                if axis1_direction == 'positive':
+                    fast_axis = np.hstack((fast_axis,data))
+                else:
+                    fast_axis = np.hstack((data,fast_axis))
             elif axis1 == 'y':
-                fast_axis = np.vstack((fast_axis,data))
+                if axis1_direction == 'positive':
+                    fast_axis = np.vstack((fast_axis,data))
+                else:
+                    fast_axis = np.vstack((data,fast_axis))
             del data
         if i == 0:
             pattern = np.copy(fast_axis)
         else:
-            if axis2 == 'negative':
+            if axis2_direction == 'negative':
                 if axis1 == 'x':
                     pattern = np.vstack((fast_axis,pattern))
                 elif axis1 == 'y':

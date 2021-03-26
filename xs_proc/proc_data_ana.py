@@ -239,6 +239,7 @@ def pttn_of_int_map(int_map,
                     mask = None,
                     zoom_xlim=(0,-1),
                     zoom_ylim=(0,-1),
+                    bkgd = None,
                     **kwargs):
     zoom_xlim = np.array(zoom_xlim)
     zoom_ylim = np.array(zoom_ylim)
@@ -254,6 +255,7 @@ def pttn_of_int_map(int_map,
                 vmax = vmax2,
                 log  = log,
                 mask = mask,
+                bkgd = bkgd,
                 **kwargs):
         fig2,ax2 = plt.subplots()
         col = np.round(event.xdata).astype(int)
@@ -263,6 +265,8 @@ def pttn_of_int_map(int_map,
         #print(path,pttn)
         with h5py.File(path,'r') as f:
             d = np.copy(f[data_path][pttn]).astype(float)
+        if not isinstance(bkgd,type(None)):
+            d -= bkgd
         if log:
             d = np.log(d)
         if isinstance(vmin,type(None)):
