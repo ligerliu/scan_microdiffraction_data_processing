@@ -16,8 +16,10 @@ warnings.filterwarnings('ignore')
 
 #proposal_path = "/data/visitor/ls2995/id13"
 #proposal_num  = "ls2995"
-proposal_path = "/data/visitor/sc5005/id13"
-proposal_num  = "sc5005"
+#proposal_path = "/data/visitor/sc5005/id13"    
+#proposal_num  = "sc5005"
+proposal_path = "/data/id13/inhouse12/DATAPOLICY_I12_1/eh2/inhouse/blc12867/id13"
+proposal_num = "blc12867"
 data_path     = 'entry_0000/measurement/data'
 # the directory could be replaced by user with specific path
 save_path     = os.getcwd()
@@ -33,7 +35,8 @@ sample_keywords = [
                   #['WTCS1_b_mac1_strip1lr1_2.1'],
                   #['WTCS1_c_mac1_strip1lr1_1.1'],
                   #['mac1','sup']
-                  ['mount04_M22Lox_7'],
+                  #['mount04_M22Lox_7'],
+                  ["twist"]
                   ]
 samples = samples_for_process(t1,sample_keywords)
 
@@ -51,7 +54,7 @@ def bkgd_cal(left_top,bottom_right,h5_list,path_idx,pttn_idx,
     data = np.array(data)
     return np.nanmean(data,axis=0)
 
-bkgd = bkgd_cal((0,0),(5,5),h5_list,path_idx,pttn_idx)#[1150:1300,850:1100]
+bkgd = bkgd_cal((0,0),(1,1),h5_list,path_idx,pttn_idx)#[1150:1300,850:1100]
 
 
 import time
@@ -65,7 +68,9 @@ res = parallel_func(scan_pttn_roi_sum,12,np.arange(len(path_idx.flatten())),
                    #right_bottom=(1100,1300),
                    #left_top=(1068,1140),
                    #right_bottom=(1222,1322),
-                   bkgd=bkgd,
+                   left_top     = (1133,1062),
+                   right_bottom = (1283,1212),
+                   #bkgd=bkgd,
                    )
 print(time.time()-tm)
 roi = np.array(res).reshape(scan_shape)
