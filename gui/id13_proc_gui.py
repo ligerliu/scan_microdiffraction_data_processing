@@ -29,6 +29,7 @@ class input_window(QMainWindow):
         path_name = QLabel('path',path)
         #self.path_input = QLineEdit('',path)
         self.path_input = QLineEdit('/data/id13/inhouse12/DATAPOLICY_I12_1/eh2/inhouse/blc12867/id13',path)
+        self.proposal_path = self.path_input.text()
         self.path_input.move(60,0)
         self.path_input.textEdited.connect(self.path_set)
 
@@ -37,6 +38,7 @@ class input_window(QMainWindow):
         id_name = QLabel('proposal',prop_id)
         #self.id_input   = QLineEdit('',prop_id)
         self.id_input   = QLineEdit('blc12867',prop_id)
+        self.proposal_id = self.id_input.text()
         self.id_input.move(60,0)
         self.id_input.textEdited.connect(self.id_set)
        
@@ -170,6 +172,7 @@ class roi_sum(QWidget):
         up_corner_label = QLabel('up corner',up_corner)
         up_corner_label.setGeometry(0,0,60,20)
         up_corner_input = QLineEdit('0,0',up_corner)
+        self.ul_corner_set(up_corner_input.text())
         up_corner_input.setGeometry(80,0,60,20)
         up_corner_input.textChanged[str].connect(self.ul_corner_set)
         
@@ -178,6 +181,7 @@ class roi_sum(QWidget):
         dr_corner_label = QLabel('down corner',dr_corner)
         dr_corner_label.setGeometry(0,0,60,20)
         dr_corner_input = QLineEdit('-1,-1',dr_corner)
+        self.dr_corner_set(dr_corner_input.text())
         dr_corner_input.setGeometry(80,0,60,20)
         dr_corner_input.textChanged[str].connect(self.dr_corner_set)
         
@@ -189,14 +193,14 @@ class roi_sum(QWidget):
     def ul_corner_set(self,text):
         try:
             t = text.split(',')
-            self.ul =  (int(t[0]),int(t[1]))
+            self.ul =  [int(t[0]),int(t[1])]
         except:
             pass
     
     def dr_corner_set(self,text):
         try:
             t = text.split(',')
-            self.dr =  (int(t[0]),int(t[1]))
+            self.dr =  [int(t[0]),int(t[1])]
         except:
             pass
     
@@ -208,11 +212,11 @@ class roi_sum(QWidget):
                                 path_idx = self.path_idx.flatten(),
                                 pttn_idx = self.pttn_idx.flatten(),
                                 data_path = 'entry_0000/measurement/data',
-                                #left_top  = (0,0),
-                                #right_bottom = (-1,-1),
+                                left_top  = self.ul,
+                                right_bottom = self.dr,
                                 )
             self.roi_map = np.array(res).reshape(self.scan_shape)     
-            print(self.roi_map.shape)
+            print(self.roi_map)
         except Exception as e:
             print(str(e))
             pass
