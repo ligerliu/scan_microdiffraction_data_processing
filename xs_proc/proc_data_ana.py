@@ -3,6 +3,8 @@ from skimage.draw import polygon
 import matplotlib.pyplot as plt
 from functools import partial
 import h5py
+import fabio
+
 
 def load_proc(fn,proc_type="integrate2d"):
     # load the data from proc hdf, specific formate for JL analysis
@@ -410,3 +412,12 @@ def asym_mat(qphi,qmin,qmax):
             mat[y,x] = asymetry_compare(x,y,qmin,qmax)
     return mat         
 
+
+def save_as_edf(fn,data,force_type='float',fit2dMode=True):
+    edf_obj = fabio.edfimage.EdfImage(data=data)
+    edf_obj.write(fn,force_type=force_type,fit2dMode=fit2dMode)   
+
+from PIL import Image
+def save_as_tif(fn,data):
+    img = Image.fromarray(data)
+    img.save(fn,format='TIFF')

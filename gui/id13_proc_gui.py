@@ -15,6 +15,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import file_tree as ft
 
+from silx.gui.plot.PlotWidget import PlotWidget
+
 class input_window(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -173,7 +175,7 @@ class roi_sum(QWidget):
         up_corner_label.setGeometry(0,0,60,20)
         up_corner_input = QLineEdit('0,0',up_corner)
         self.ul_corner_set(up_corner_input.text())
-        up_corner_input.setGeometry(80,0,60,20)
+        up_corner_input.setGeometry(80,0,80,20)
         up_corner_input.textChanged[str].connect(self.ul_corner_set)
         
         dr_corner = QWidget(self)
@@ -182,7 +184,7 @@ class roi_sum(QWidget):
         dr_corner_label.setGeometry(0,0,60,20)
         dr_corner_input = QLineEdit('-1,-1',dr_corner)
         self.dr_corner_set(dr_corner_input.text())
-        dr_corner_input.setGeometry(80,0,60,20)
+        dr_corner_input.setGeometry(80,0,80,20)
         dr_corner_input.textChanged[str].connect(self.dr_corner_set)
         
         proc_button = QPushButton('process',self)
@@ -216,11 +218,18 @@ class roi_sum(QWidget):
                                 right_bottom = self.dr,
                                 )
             self.roi_map = np.array(res).reshape(self.scan_shape)     
+            self.roi_show = PlotWidget()
+            self.roi_show.addImage(self.roi_map)
+            self.roi_show.show()
             print(self.roi_map)
         except Exception as e:
             print(str(e))
             pass
-                             
+                            
+#class PlotCanvas(FigureCanvas):
+#    def __init(self,data):
+#        super().__init__()
+         
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = input_window()

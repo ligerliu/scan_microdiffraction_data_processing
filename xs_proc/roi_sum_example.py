@@ -18,8 +18,10 @@ warnings.filterwarnings('ignore')
 #proposal_num  = "ls2995"
 #proposal_path = "/data/visitor/sc5005/id13"    
 #proposal_num  = "sc5005"
-proposal_path = "/data/id13/inhouse12/DATAPOLICY_I12_1/eh2/inhouse/blc12867/id13"
-proposal_num = "blc12867"
+#proposal_path = "/data/id13/inhouse12/DATAPOLICY_I12_1/eh2/inhouse/blc12867/id13"
+#proposal_num = "blc12867"
+proposal_path = '/data/visitor/ls2952/id13'
+proposal_num  = 'ls2952'
 data_path     = 'entry_0000/measurement/data'
 # the directory could be replaced by user with specific path
 save_path     = os.getcwd()
@@ -29,6 +31,7 @@ t1 = id13_h5_search(proposal_path,proposal_num)
 
 
 sample_keywords = [
+                  ['fib_mount_02_fib_mount_02_C3_a'],
                   #['MoBS_A_C1_9.1'],
                   #['WTCS1','8'],
                   #['WTCS1_b_mac1_strip1lr1_1.1'],
