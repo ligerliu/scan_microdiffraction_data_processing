@@ -70,6 +70,11 @@ class input_window(QMainWindow):
         roi_sum_proc = QPushButton("roi sum",proc_widget)
         roi_sum_proc.setGeometry(10,10,60,20)
         roi_sum_proc.clicked.connect(self.roi_sum_proc)
+        
+        qphi_ana_proc = QPushButton("qphi ana",proc_widget)
+        qphi_ana_proc.setGeometry(10,40,60,20)
+        qphi_ana_proc.clicked.connect(self.qphi_ana_proc)
+        
         self.show()
     
     def path_set(self):
@@ -147,6 +152,14 @@ class input_window(QMainWindow):
         except Exception as e:
             self.proc_msg.setText(str(e))
             pass
+    
+    def qphi_ana_proc(self):
+        try:
+            self.qphi_ana_win = qphi_analysis()
+            self.qphi_ana_win.show()
+        except Exception as e:
+            self.proc_msg.setText(str(e))
+            pass 
 
             
 class roi_sum(QWidget):
@@ -218,13 +231,7 @@ class roi_sum(QWidget):
             self.roi_map = np.array(res).reshape(self.scan_shape)    
             self.roi_show = PlotWindow(self,position=True)
             self.roi_show.addImage(self.roi_map)
-            #print(self.roi_show.sigPlotSignal.emit('mouseMoved'))
-            #from silx.gui.plot.ImageView import ImageView
-            #self.roi_show = ImageView(self)
-            #self.roi_show.setImage(self.roi_map)
             self.position = PositionInfo(plot=self.roi_show)
-            self.position._plotEvent({'event':'mouseClicked'})
-            self.roi_show.sigPlotSignal.emit({'event':'mouseClicked'})
             self.roi_show.sigPlotSignal.connect(self.roi_map_clicked)
             self.roi_show.move(200,20)
             self.subwindow1 = PlotWindow(position=True)
@@ -235,21 +242,128 @@ class roi_sum(QWidget):
             print(str(e))
             pass
     
-    def roi_map_clicked(self):
+    def roi_map_clicked(self,event):
         widget = self.roi_show.getWidgetHandle()
-        position = widget.mapFromGlobal(qt.QCursor.pos())
-        xPixel,yPixel = position.x(),position.y()
-        dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
+        if 'Clicked' in event['event']:
+            position = widget.mapFromGlobal(qt.QCursor.pos())
+            xPixel,yPixel = position.x(),position.y()
+            dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
+            try:
+                col,row = (int(dataPos[0]),int(dataPos[1]))
+                with h5py.File(self.h5_list[self.path_idx[row,col]],'r') as f:
+                    data = f['entry_0000/measurement/data'][self.pttn_idx[row,col]]
+                    self.subwindow1.addImage(data)
+            except Exception as e:
+                print(e)
+        else:
+            pass
+
+class qphi_analysis(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.qphi_ana_UI()
+        self.show()
+    
+    def qphi_ana_UI(self):
+        self.setGeometry(500,40,900,650)
+        self.setWindowTitle('qphi analysis')
+        
+        load_file_widget = QWidget(self)
+        load_file_widget.setGeometry(20,20,180,100)
+        load_file_widget.setWindowTitle('load proc hdf')
+        fileDialogBttn = QPushButton('open proc',load_file_widget)
+        fileDialogBttn.setGeometry(10,20,80,20)
+        fileDialogBttn.clicked.connect(self.jl_qphi_load)
+        
+        self.fileInputWin = QLineEdit('',load_file_widget)
+        self.fileInputWin.setGeometry(10,50,160,20)
+        self.fileInputWin.editingFinished.connect(self.line_edit_input)
+        
+        roi_setup    = QWidget(self)
+        roi_setup.setGeometry(10,120,180,220)
+        qmin_label = QLabel('qmin',roi_setup)
+        qmin_label.setGeometry(10,10,60,20)
+        self.qmin = QLineEdit('',roi_setup)
+        self.qmin.setAlignment(Qt.AlignRight)
+        self.qmin.setGeometry(80,10,100,20)
+        qmax_label = QLabel('qmax',roi_setup)
+        qmax_label.setGeometry(10,40,60,20)
+        self.qmax = QLineEdit('',roi_setup)
+        self.qmax.setAlignment(Qt.AlignRight)
+        self.qmax.setGeometry(80,40,100,20)
+        amin_label = QLabel('amin',roi_setup)
+        amin_label.setGeometry(10,70,60,20)
+        self.amin = QLineEdit('',roi_setup)
+        self.amin.setAlignment(Qt.AlignLeft)
+        self.amin.setGeometry(80,70,100,20)
+        amax_label = QLabel('amax',roi_setup)
+        amax_label.setGeometry(10,100,60,20)
+        self.amax = QLineEdit('',roi_setup)
+        self.amax.setAlignment(Qt.AlignLeft)
+        self.amax.setGeometry(80,100,100,20)
+        self.low_int_thrhd_label = QLabel('low thrhd',roi_setup)
+        self.low_int_thrhd_label.setGeometry(10,130,60,20)
+        self.low_int_thrhd_line = QLineEdit('0',roi_setup)
+        self.low_int_thrhd_line.setGeometry(80,130,100,20)
+        self.high_int_thrhd_label = QLabel('high thrhd',roi_setup)
+        self.high_int_thrhd_label.setGeometry(10,160,60,20)
+        self.high_int_thrhd_line = QLineEdit('',roi_setup)
+        self.high_int_thrhd_line.setGeometry(80,160,100,20)
+        self.roi_sum_bttn = QPushButton('roi sum',roi_setup)
+        self.roi_sum_bttn.move(10,190)
+        self.roi_sum_bttn.clicked.connect(self.qphi_roi_sum)
+        
+        
+    def qphi_roi_sum(self):
         try:
-            col,row = (int(dataPos[0]),int(dataPos[1]))
-            with h5py.File(self.h5_list[self.path_idx[row,col]],'r') as f:
-                data = f['entry_0000/measurement/data'][self.pttn_idx[row,col]]
-                self.subwindow1.addImage(data)
+            qmin = float(self.qmin.text())
+            qmax = float(self.qmax.text())
+            amin = float(self.amin.text())
+            amax = float(self.amax.text())
+            qphi = np.copy(self.qphi)
+            low_thrd = float(self.low_int_thrhd_line.text())
+            qphi[qphi<low_thrd] = np.nan
+            high_thrd = self.high_int_thrhd_line.text()
+            if high_thrd != '':
+                high_thrd = float(high_thrd)
+                qphi[qphi>high_thrd] = np.nan
+            roi = sum_roi_2dmap(qphi,self.q,self.q,
+                                qmin=qmin,qmax=qmax,
+                                amin=amin,amax=amax)
+            print(roi,amin,amax)
+            self.qphi_roi_map = PlotWindow(self)
+            self.qphi_roi_map.move(220,20)
+            self.qphi_roi_map.addImage(roi)
+            self.qphi_roi_map.show()
         except Exception as e:
             print(e)
-        #print(self.roi_show.pixelToData(12,30))
-    #def pttn_plot(self):
-    #    c,r = cl
+            pass
+                
+        
+    def load_proc_hdf(self):    
+        if self.fn != '':
+            try:
+                self.q = load_proc_dataset(self.fn,'q')
+                self.a = load_proc_dataset(self.fn,'angle')
+                self.qphi = load_proc_dataset(self.fn,'map_qphi')
+                self.qmin.setText(str(np.min(self.q)))
+                self.qmax.setText(str(np.max(self.q)))
+                self.amin.setText(str(np.min(self.a)))
+                self.amax.setText(str(np.max(self.a)))
+            except Exception as e:
+                print(e)
+        else:
+            print(f"data path: {self.fn} is not correct")
+            pass
+         
+    def line_edit_input(self):
+        self.fn = self.fileInputWin.text()    
+        self.load_proc_hdf()
+        
+    def jl_qphi_load(self):
+        self.fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
+        self.fileInputWin.setText(self.fn)
+        self.load_proc_hdf()
                             
 #class PlotCanvas(FigureCanvas):
 #    def __init(self,data):
