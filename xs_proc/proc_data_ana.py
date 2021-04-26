@@ -239,6 +239,7 @@ def pttn_of_int_map(int_map,
                     vmax2 = None,
                     log  = True,
                     mask = None,
+                    aspect = None,
                     zoom_xlim=(0,-1),
                     zoom_ylim=(0,-1),
                     bkgd = None,
@@ -250,7 +251,10 @@ def pttn_of_int_map(int_map,
         vmin1 = np.nanmean(int_map)-3*np.nanstd(int_map)
     if isinstance(vmax1,type(None)):
         vmax1 = np.nanmean(int_map)+3*np.nanstd(int_map)
-    ax1.imshow(int_map,vmin=vmin1,vmax=vmax1)
+    if isinstance(aspect,type(None)):
+        ax1.imshow(int_map,vmin=vmin1,vmax=vmax1)
+    else:
+        ax1.imshow(int_map,vmin=vmin1,vmax=vmax1,aspect=aspect)
     def onclick(event,
                 data_path='entry_0000/measurement/data',
                 vmin = vmin2,
@@ -268,8 +272,9 @@ def pttn_of_int_map(int_map,
         with h5py.File(path,'r') as f:
             d = np.copy(f[data_path][pttn]).astype(float)
         if not isinstance(bkgd,type(None)):
-            d -= bkgd
+            d = d - bkgd
         if log:
+            d[d<=1] = 1
             d = np.log(d)
         if isinstance(vmin,type(None)):
             vmin = np.nanmean(d)-np.nanstd(d)*3

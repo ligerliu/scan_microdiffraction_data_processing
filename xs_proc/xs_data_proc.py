@@ -270,8 +270,12 @@ def scan_pttn_roi_sum(num,
         data[data>hlm] = np.nan
         data[data<llm] = np.nan
         if not isinstance(bkgd,type(None)):
+            bkgd = bkgd[left_top[1]:right_bottom[1],
+                        left_top[0]:right_bottom[0]]
             data -= bkgd
         if not isinstance(mask,type(None)):
+            mask = mask[left_top[1]:right_bottom[1],
+                        left_top[0]:right_bottom[0]]
             data[mask] = np.nan
         I = np.nanmean(data)
     return I
