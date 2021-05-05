@@ -20,6 +20,7 @@ from PyQt5.QtCore import *
 import file_tree as ft
 from time import time
 
+from silx.gui.plot import *
 from silx.gui.plot.PlotWidget import PlotWidget
 from silx.gui import qt
 from silx.gui.plot.PlotWindow import PlotWindow 
@@ -36,8 +37,13 @@ class input_window(QMainWindow):
         self.setGeometry(100,100,1280,480)
         self.setWindowTitle('jl_beta_ver')#fuck')
         
+        path_load = QWidget(self)
+        path_load.setGeometry(20,20,180,30)
+        path_load_bttn = QPushButton('path load',path_load)
+        path_load_bttn.clicked.connect(self.load_path)
+            
         path = QWidget(self)
-        path.setGeometry(20,20,180,20)
+        path.setGeometry(20,60,180,20)
         path_name = QLabel('path',path)
         #self.path_input = QLineEdit('',path)
         #self.path_input = QLineEdit('/data/id13/inhouse12/DATAPOLICY_I12_1/eh2/inhouse/blc12867/id13',path)
@@ -47,7 +53,7 @@ class input_window(QMainWindow):
         self.path_input.textEdited.connect(self.path_set)
 
         prop_id = QWidget(self) 
-        prop_id.setGeometry(20,50,180,20)
+        prop_id.setGeometry(20,90,180,20)
         id_name = QLabel('proposal',prop_id)
         #self.id_input   = QLineEdit('',prop_id)
         #self.id_input   = QLineEdit('blc12867',prop_id)
@@ -86,12 +92,66 @@ class input_window(QMainWindow):
         qphi_ana_proc.setGeometry(10,40,60,20)
         qphi_ana_proc.clicked.connect(self.qphi_ana_proc)
        
+        pttn_sum_proc = QPushButton("total sum",proc_widget)
+        pttn_sum_proc.setGeometry(80,40,60,20)
+        pttn_sum_proc.clicked.connect(self.total_sum_proc)
          
         Iq_cal = QPushButton("Iq cal",proc_widget)
         Iq_cal.setGeometry(10,70,60,20)
         Iq_cal.clicked.connect(self.Iq_cal_proc)
         
         self.show()
+    
+    def total_sum_proc(self):
+        try:
+            if hasattr(self.scan_obj,'data_h5'):
+                t = time()
+                h5_path_list = self.scan_obj.data_h5
+                for i in range(len(h5_path_list)):
+                    h5_path = h5_path_list[i]
+                    name = os.path.split(h5_path)[1][:-3]
+                    with h5py.File(h5_path,'r') as f:
+                        total_num = f[self.data_path].shape[0]
+                    idx_list = chunk_idx(total_num,2000)
+                    if total_num >= 2000:
+                        res =  parallel_func(partial_sum,12,idx_list,
+                                             h5_path=h5_path,data_path=self.data_path,
+                                             )
+                        print("\nsum processing time:\n%5.2f sec" %(time()-t))
+                        data = res[0]*0
+                        for __ in res:
+                            data += __
+                        data /= len(res)
+                    else:
+                        print("\nsum processing time:\n%5.2f sec" %(time()-t))
+                        with h5py.File(h5_path,"r") as f:
+                            data = np.nanmean(f[self.data_path][:],axis=0)
+                    data = data.astype(np.uint32)
+                    img = fabio.edfimage.EdfImage(data=data)
+                    #
+                    save_path = QFileDialog.getExistingDirectory()
+                    os.chdir(save_path)
+                    if not os.path.exists("edf_sum_file"):
+                        os.mkdir("edf_sum_file")
+                    os.chdir("edf_sum_file")
+                    img.write("{}.edf".format(name))
+                    os.chdir(save_path)
+        except Exception as e:
+            print(e)
+            pass    
+
+
+    def load_path(self):
+        try:
+            path = QFileDialog.getExistingDirectory()
+            self.path_input.setText(path)
+            proposal_id = path.split('/')[-2]
+            self.id_input.setText(proposal_id)
+            self.path_set()
+            self.id_set()
+        except Exception as e:
+            print(e)
+            pass    
     
     def path_set(self):
         self.proposal_path = self.path_input.text()
@@ -101,8 +161,6 @@ class input_window(QMainWindow):
         
     def load_id13_h5(self):
         try:
-            #print('\n\n',self.proposal_path,
-            #      '\n\n',self.proposal_id)
             
             self.scan_obj = id13_h5_search(
                                 self.proposal_path,
@@ -114,7 +172,6 @@ class input_window(QMainWindow):
     
     def add_file(self):
         try:
-            #print(1)
             path = os.path.join(self.proposal_path,
                    '{}_id13.h5'.format(self.proposal_id))
             with h5py.File(path,'r') as f:
@@ -154,16 +211,27 @@ class input_window(QMainWindow):
                     scan_info(self.scan_obj)
             self.h5_list,self.path_idx,self.pttn_idx = \
                     scan_h5_data_info(self.scan_obj,
-                                    self.scan_shape,self.idx_list)
+                               self.scan_shape,self.idx_list)
+            #self.update_info(qphi_calculate)
+            #self.update_info(Iq_calculate)           
+            print(self.h5_list,self.scan_obj._data_name,self.scan_obj.data_h5) 
         except Exception as e:
             self.proc_msg.setText(str(e))
             pass
 
+    def update_info(self,obj):
+        obj.h5_list    = self.h5_list
+        obj.path_idx   = self.path_idx
+        obj.pttn_idx   = self.pttn_idx
+        obj.scan_shape = self.scan_shape
+        obj.obj        = self.scan_obj 
+    
     def roi_sum_proc(self):
         try:
-            self.roi_sum_win = roi_sum(self.h5_list,
-                        self.path_idx,self.pttn_idx,
-                        self.scan_shape)
+            self.roi_sum_win = roi_sum(self.scan_obj)
+                        #self.h5_list,
+                        #self.path_idx,self.pttn_idx,
+                        #self.scan_shape)
             self.roi_sum_win.show()
         except Exception as e:
             self.proc_msg.setText(str(e))
@@ -171,9 +239,10 @@ class input_window(QMainWindow):
     
     def qphi_cal_proc(self):
         try:
-            self.qphi_cal_win = qphi_calculate(self.h5_list,
-                        self.path_idx,self.pttn_idx,
-                        self.scan_shape,self.scan_obj)
+            self.qphi_cal_win = qphi_calculate(self.scan_obj)
+                        #self.h5_list,
+                        #self.path_idx,self.pttn_idx,
+                        #self.scan_shape,self.scan_obj)
             self.qphi_cal_win.show()
         except Exception as e:
             self.proc_msg.setText(str(e))
@@ -181,9 +250,10 @@ class input_window(QMainWindow):
     
     def Iq_cal_proc(self):
         try:
-            self.Iq_cal_win = Iq_calculate(self.h5_list,
-                        self.path_idx,self.pttn_idx,
-                        self.scan_shape,self.scan_obj)
+            self.Iq_cal_win = Iq_calculate(self.scan_obj)
+                        #self.h5_list,
+                        #self.path_idx,self.pttn_idx,
+                        #self.scan_shape,self.scan_obj)
             self.Iq_cal_win.show()
         except Exception as e:
             self.proc_msg.setText(str(e))
@@ -191,7 +261,8 @@ class input_window(QMainWindow):
     
     def qphi_ana_proc(self):
         try:
-            self.qphi_ana_win = qphi_analysis()#self.h5_list,
+            self.qphi_ana_win = qphi_analysis()
+                        #self.h5_list,
                         #self.path_idx,self.pttn_idx,
                         #self.scan_shape)
 
@@ -202,12 +273,13 @@ class input_window(QMainWindow):
 
             
 class roi_sum(QWidget):
-    def __init__(self,h5_list,path_idx,pttn_idx,scan_shape,*args,**kwargs):
+    def __init__(self,obj):#h5_list,path_idx,pttn_idx,scan_shape,*args,**kwargs):
         super().__init__()
-        self.h5_list  = h5_list
-        self.path_idx = path_idx
-        self.pttn_idx = pttn_idx
-        self.scan_shape = scan_shape
+        #self.h5_list  = h5_list
+        #self.path_idx = path_idx
+        #self.pttn_idx = pttn_idx
+        #self.scan_shape = scan_shape
+        self.obj = obj
         self.roi_sum_UI()
         self.show()
         
@@ -267,6 +339,11 @@ class roi_sum(QWidget):
     def roi_sum_process(self):
         try:
             t = time()
+            self.total_pttns,self.scan_shape,self.idx_list = \
+                    scan_info(self.obj)
+            self.h5_list,self.path_idx,self.pttn_idx = \
+                    scan_h5_data_info(self.obj,
+                               self.scan_shape,self.idx_list)
             res = parallel_func(scan_pttn_roi_sum,12,
                                 np.arange(len(self.path_idx.flatten())),
                                 h5_list  = self.h5_list,
@@ -277,13 +354,27 @@ class roi_sum(QWidget):
                                 right_bottom = self.dr,
                                 )
             self.roi_map = np.array(res).reshape(self.scan_shape)    
-            self.roi_show = PlotWindow(self,position=True)
+            self.roi_show = PlotWindow(self)#,position=True)
             self.roi_show.addImage(self.roi_map)
+
+            toolBar = qt.QToolBar()
+            self.roi_show.addToolBar(
+            qt.Qt.BottomToolBarArea,
+            toolBar)
+            position = PositionInfo(plot= \
+            self.roi_show,
+            converters=[('X', 
+            lambda x,y: int(np.round(x))),
+            ('Y',
+            lambda x,y: int(np.round(y)))])
+            toolBar.addWidget(position)
+
             self.position = PositionInfo(plot=self.roi_show)
             self.roi_show.sigPlotSignal.connect(self.roi_map_clicked)
             self.roi_show.move(200,20)
-            self.subwindow1 = PlotWindow(position=True)
-            self.subwindow1.show()
+            self.subwindow1 = None
+            #self.subwindow1 = PlotWindow(position=True)
+            #self.subwindow1.show()
             self.roi_show.show()
             print(time() - t)
         except Exception as e:
@@ -293,6 +384,9 @@ class roi_sum(QWidget):
     def roi_map_clicked(self,event):
         widget = self.roi_show.getWidgetHandle()
         if 'Clicked' in event['event']:
+            if isinstance(self.subwindow1,type(None)):
+                self.subwindow1 = PlotWindow(position=True)
+                self.subwindow1.show()
             position = widget.mapFromGlobal(qt.QCursor.pos())
             xPixel,yPixel = position.x(),position.y()
             dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
@@ -313,15 +407,11 @@ class roi_sum(QWidget):
             pass
 
 class Iq_calculate(QWidget):
-    def __init__(self,h5_list,path_idx,pttn_idx,scan_shape,obj):
+    def __init__(self,obj):#h5_list,path_idx,pttn_idx,scan_shape,obj):
         super().__init__()
-        self.h5_list  = h5_list
-        self.path_idx = path_idx
-        self.pttn_idx = pttn_idx
-        self.scan_shape = scan_shape
+        self.obj = obj
         self.poni  = None
         self.mask_file = None
-        self.obj = obj
         self.Iq_cal_UI()
         self.show()
     
@@ -359,31 +449,73 @@ class Iq_calculate(QWidget):
         self.save_path_input.setGeometry(80,100,120,20)
         
         process_button = QPushButton("process",self)
-        process_button.setGeometry(20,450,60,20)
+        process_button.setGeometry(20,420,60,20)
         process_button.clicked.connect(self.Iq_cal)
+        
+        load_Iq_button = QPushButton("load_Iq",self)
+        load_Iq_button.setGeometry(20,450,60,20)
+        load_Iq_button.clicked.connect(self.load_Iq)
         
         Iq_2d_map_button = QPushButton("Iq map",self)
         Iq_2d_map_button.setGeometry(20,480,60,20)
         Iq_2d_map_button.clicked.connect(self.Iq_map_show)
+    
+        self.add_map_box = QCheckBox('add Iq map',self)
+        self.add_map_box.move(20,510)
+        self.map_id = 0
+        
+    def load_Iq(self):
+        try:
+            self.Iq_h5,_ = QFileDialog.getOpenFileName(self,"load Iq","","")
+            self.Iq = load_proc_dataset(self.Iq_h5,'Iq',proc_type="integrate1d")
+            self.q  = load_proc_dataset(self.Iq_h5,'q',proc_type="integrate1d")
+        except Exception as e:
+            print(e)
+            pass
         
     def Iq_map_show(self):
-        Iq_show = PlotWindow(self,position=True)
-        Iq_show.move(240,20)
+        Iq_show = Plot2D(self)#PlotWindow(self)#,position=True)
+        Iq_show.setGeometry(240,20,640,480)
         data = np.copy(self.Iq)
         data = data.reshape((self.Iq.shape[0]*self.Iq.shape[1],
                              self.Iq.shape[2]))
-        Iq_show.addImage(data, 
-                        scale = ((self.q[-1]-self.q[0])/len(self.q),1)
-                        )
+
+        if self.add_map_box.isChecked():
+            self.img = np.vstack((data,self.img))
+        else:
+            self.img = np.copy(data) 
+        Iq_show.addImage(self.img,
+                        scale = ((self.q[-1]-self.q[0])/len(self.q),1),
+                        ) 
+        Iq_show.setGraphXLabel(label=r'$Q\,\,(\AA^{-1})$')
+        toolBar = qt.QToolBar()
+        Iq_show.addToolBar(
+        qt.Qt.BottomToolBarArea,
+        toolBar)
+        position = PositionInfo(plot= \
+        Iq_show,
+        converters=[('X', 
+        lambda x,y: x),
+        ('Y',
+        lambda x,y: y),
+        ('value',
+        lambda x,y: self.img[int(np.round(y)),
+                        np.argmin(np.abs(self.q-x))]),
+        ])
+        toolBar.addWidget(position)
         Iq_show.show()
         
     def load_mask_window(self):
-        self.mask_file,_ = QFileDialog.getOpenFileName(self,"open file","","")
-        self.mask = np.load(self.mask_file)['mask']
+        try:
+            self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
+            self.mask = np.load(self.mask_file)['mask']
+        except Exception as e:
+            print(e)
+            pass
     
     def load_poni_window(self):
-        self.poni,_ = QFileDialog.getOpenFileName(self,"open file","","")
         try:
+            self.poni,_ = QFileDialog.getOpenFileName(self,"load poni","","")
             self.ai = pyFAI.load(self.poni)
         except Exception as e:
             print(e)
@@ -391,8 +523,14 @@ class Iq_calculate(QWidget):
     
     def Iq_cal(self,**kwargs):
         # currently still in form of ID13 customization, need to be generized
-        #try:
+        try:
             t = time()
+            self.total_pttns,self.scan_shape,self.idx_list = \
+                    scan_info(self.obj)
+            self.h5_list,self.path_idx,self.pttn_idx = \
+                    scan_h5_data_info(self.obj,
+                               self.scan_shape,self.idx_list)
+            print(self.h5_list[0],self.obj._data_name)
             self.q_npts = int(self.Iq_q_shape.text())
             self.data_path = str(self.data_path_input.text())
             num_core = int(self.core_num.text())
@@ -436,17 +574,18 @@ class Iq_calculate(QWidget):
             print(time()-t)#,'\n\nfuck complete')
             self.q  = q
             self.Iq = Iq 
-        #except Exception as e:
-        #    print(e)
+        except Exception as e:
+            print(e)
+            pass
 
 
 class qphi_calculate(QWidget):
-    def __init__(self,h5_list,path_idx,pttn_idx,scan_shape,obj):
+    def __init__(self,obj):#h5_list,path_idx,pttn_idx,scan_shape,obj):
         super().__init__()
-        self.h5_list  = h5_list
-        self.path_idx = path_idx
-        self.pttn_idx = pttn_idx
-        self.scan_shape = scan_shape
+        #self.h5_list  = h5_list
+        #self.path_idx = path_idx
+        #self.pttn_idx = pttn_idx
+        #self.scan_shape = scan_shape
         self.poni  = None
         self.mask_file = None
         self.obj = obj
@@ -501,11 +640,11 @@ class qphi_calculate(QWidget):
         
     
     def load_mask_window(self):
-        self.mask_file,_ = QFileDialog.getOpenFileName(self,"open file","","")
+        self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
         self.mask = np.load(self.mask_file)['mask']
     
     def load_poni_window(self):
-        self.poni,_ = QFileDialog.getOpenFileName(self,"open file","","")
+        self.poni,_ = QFileDialog.getOpenFileName(self,"load poni","","")
         try:
             self.ai = pyFAI.load(self.poni)
         except Exception as e:
@@ -514,8 +653,14 @@ class qphi_calculate(QWidget):
     
     def qphi_cal(self,**kwargs):
         # currently still in form of ID13 customization, need to be generized
-        #try:
+        try:
             t = time()
+            self.total_pttns,self.scan_shape,self.idx_list = \
+                    scan_info(self.obj)
+            self.h5_list,self.path_idx,self.pttn_idx = \
+                    scan_h5_data_info(self.obj,
+                               self.scan_shape,self.idx_list)
+            print(self.h5_list[0],self.obj._data_name)
             self.q_npts = int(self.qphi_q_shape.text())
             self.a_npts = int(self.qphi_a_shape.text())
             self.data_path = str(self.data_path_input.text())
@@ -560,8 +705,9 @@ class qphi_calculate(QWidget):
                     pttn_idx = self.pttn_idx,
                     h5_path_list = self.h5_list)
             print(time()-t)#,'\n\nfuck complete')
-        #except Exception as e:
-        #    print(e)
+        except Exception as e:
+            print(e)
+            pass
    
  
 class qphi_analysis(QWidget):
@@ -632,7 +778,32 @@ class qphi_analysis(QWidget):
         self.bkgd_sub_box.move(10,250)
         #self.bkgd_sub_box.stateChanged.connect(self.qphi_roi_sum)
         
+        self.ori_map_bttn = QPushButton('ori map',roi_setup)
+        self.ori_map_bttn.move(10,280)
+        self.ori_map_bttn.clicked.connect(self.ori_map_cal)
+        
         self.show() 
+    
+    def ori_map_cal(self):
+        try:
+            qmin = float(self.qmin.text())
+            qmax = float(self.qmax.text())
+            qphi = np.copy(self.qphi)
+            ori_mat,wid_mat = ori_determ2d(qphi,self.a,self.q,qmin,qmax,
+                                ll_thrhd = 0, hl_thrhd = np.inf)
+            #
+            self.ori_map_widget = QWidget()
+            self.ori_map_widget.setGeometry(500,700,1300,500)
+            ori_map = Plot2D(self.ori_map_widget)#PlotWindow(position=True)
+            ori_map.setGeometry(0,10,640,480)
+            ori_map.addImage(ori_mat,legend='ori_map',replace=False)
+            wid_map = Plot2D(self.ori_map_widget)
+            wid_map.setGeometry(660,10,640,480)
+            wid_map.addImage(wid_mat,legend='wid_map',replace=False)
+            self.ori_map_widget.show()
+        except Exception as e:
+            print(e)
+            pass
     
     def load_bkgd(self):
         self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
@@ -673,17 +844,16 @@ class qphi_analysis(QWidget):
             converters=[('X', 
             lambda x,y: int(np.round(x))),
             ('Y',
-            lambda x,y: int(np.round(y)))])
+            lambda x,y: int(np.round(y))),
+            ('value',
+            lambda x,y: roi[int(np.round(y)),int(np.round(x))]),
+            ])
             toolBar.addWidget(position)
             
+            self.subwindow = None
             self.qphi_roi_map.sigPlotSignal.connect(self.roi_map_clicked)
-            self.subwindow = QWidget()
-            self.subwindow.setGeometry(1260,620,900,760)
-            #self.subwindow2 = PlotWindow(self.subwindow,position=True) 
-            self.subwindow2 = ImageView(self.subwindow)
-            self.subwindow2.move(5,5)
             roi_map.show()
-            self.subwindow.show()
+            #self.subwindow.show()
          
         except Exception as e:
             print(e)
@@ -723,6 +893,13 @@ class qphi_analysis(QWidget):
     def roi_map_clicked(self,event):
         widget = self.qphi_roi_map.getWidgetHandle()
         if event['event'] == 'mouseClicked':
+            if isinstance(self.subwindow,type(None)):
+                self.subwindow = QWidget()
+                self.subwindow.setGeometry(1260,620,900,760)
+                #self.subwindow2 = PlotWindow(self.subwindow,position=True) 
+                self.subwindow2 = ImageView(self.subwindow)
+                self.subwindow2.move(5,5)
+            self.subwindow.show()
             position = widget.mapFromGlobal(qt.QCursor.pos())
             xPixel,yPixel = position.x(),position.y()
             dataPos = self.qphi_roi_map.pixelToData(xPixel,yPixel,check=True)

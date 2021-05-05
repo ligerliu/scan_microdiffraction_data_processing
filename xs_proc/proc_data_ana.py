@@ -326,20 +326,34 @@ def ori_determ_max(a,d):
 
 def ori_determ2d(qphi,
                  azi,
-                 qid,
-                 mask=None,
+                 q,
+                 #qid,
+                 qmin,
+                 qmax,
+                 mask= None,
+                 ll_thrhd = None,
+                 hl_thrhd = None, 
                 ):
+    qphi = np.copy(qphi)
+    qid1 = np.argmin(np.abs(q-qmin))
+    qid2 = np.argmin(np.abs(q-qmax))+1
+    if not isinstance(ll_thrhd,type(None)):
+        qphi[qphi<=ll_thrhd] = np.nan
+    if not isinstance(hl_thrhd,type(None)):
+        qphi[qphi>=hl_thrhd] = np.nan
     ori_mat = np.zeros((qphi.shape[:2]))*np.nan
     wid_mat = np.zeros((qphi.shape[:2]))*np.nan
     for _ in range(qphi.shape[0]):
         for __ in range(qphi.shape[1]):
             if isinstance(mask,type(None)):
+                data = np.nanmean(qphi[_,__,:,qid1:qid2],axis=-1)
                 ori_mat[_,__],wid_mat[_,__] = ori_determ_max(azi,
-                                                     qphi[_,__,:,qid])
+                                                             data)
             else:
                 if mask[_,__]:
+                    data = np.nanmean(qphi[_,__,:,qid1:qid2],axis=-1)
                     ori_mat[_,__],wid_mat[_,__] = ori_determ_max(azi,
-                                                         qphi[_,__,:,qid])
+                                                                 data)
     return ori_mat,wid_mat
 
 def plot_quiver(ori_mat,wid_mat,
