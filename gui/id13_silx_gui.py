@@ -2,7 +2,8 @@ import sys
 sys.path.append('../xs_proc')
 from h5_data_search import *
 from xs_data_proc import *
-from proc_data_ana import *      
+from proc_data_ana import *     
+from visual_func import * 
 from multi_scan_qphi_proc import * 
 from multi_scan_Iq_proc import * 
 import os
@@ -214,7 +215,7 @@ class input_window(QMainWindow):
                                self.scan_shape,self.idx_list)
             #self.update_info(qphi_calculate)
             #self.update_info(Iq_calculate)           
-            print(self.h5_list,self.scan_obj._data_name,self.scan_obj.data_h5) 
+            #print(self.h5_list,self.scan_obj._data_name,self.scan_obj.data_h5) 
         except Exception as e:
             self.proc_msg.setText(str(e))
             pass
@@ -309,6 +310,11 @@ class roi_sum(QWidget):
         proc_button.setGeometry(20,120,60,20)
         proc_button.clicked.connect(self.roi_sum_process)
         
+        pttn_roi_sum_button = QPushButton('roi sum pttn',self)
+        pttn_roi_sum_button.setGeometry(20,150,60,20)
+        pttn_roi_sum_button.clicked.connect(self.pttn_roi_sum_process)
+        self.pttn_roi_sum_window = None
+         
         self.bkgd_load_bttn = QPushButton('bkgd load',self)
         self.bkgd_load_bttn.move(10,220)
         self.bkgd_load_bttn.clicked.connect(self.load_bkgd)
@@ -319,8 +325,12 @@ class roi_sum(QWidget):
         self.show()
          
     def load_bkgd(self):
-        self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
-        self.bkgd = fabio.open(self.bkgd_fn).data
+        try:
+            self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
+            self.bkgd = fabio.open(self.bkgd_fn).data
+        except Exception as e:
+            print(e)
+            pass
     
     def ul_corner_set(self,text):
         try:
@@ -371,6 +381,7 @@ class roi_sum(QWidget):
 
             self.position = PositionInfo(plot=self.roi_show)
             self.roi_show.sigPlotSignal.connect(self.roi_map_clicked)
+            self.roi_show.sigPlotSignal.connect(self.roi_map_polygon)
             self.roi_show.move(200,20)
             self.subwindow1 = None
             #self.subwindow1 = PlotWindow(position=True)
@@ -384,28 +395,79 @@ class roi_sum(QWidget):
     def roi_map_clicked(self,event):
         widget = self.roi_show.getWidgetHandle()
         if 'Clicked' in event['event']:
-            if isinstance(self.subwindow1,type(None)):
-                self.subwindow1 = PlotWindow(position=True)
-                self.subwindow1.show()
-            position = widget.mapFromGlobal(qt.QCursor.pos())
-            xPixel,yPixel = position.x(),position.y()
-            dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
             try:
+                if isinstance(self.subwindow1,type(None)):
+                    self.subwindow1 = Plot2D()#PlotWindow(position=True)
+                self.subwindow1.show()
+                position = widget.mapFromGlobal(qt.QCursor.pos())
+                xPixel,yPixel = position.x(),position.y()
+                dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
                 col,row = (int(dataPos[0]),int(dataPos[1]))
                 with h5py.File(self.h5_list[self.path_idx[row,col]],'r') as f:
                     data = np.copy(f['entry_0000/measurement/data'][self.pttn_idx[row,col]])
-                
+                    data = data.astype(np.int)
                     if self.bkgd_sub_box.isChecked():
                         if not isinstance(self.bkgd,type(None)):
-                            data = data - self.bkgd
-                    data[data<1] = 1
-                    data = data.astype(np.uint32)
+                            bkgd = np.copy(self.bkgd).astype(np.int)
+                            data = data - bkgd
+                    data[data<1] = 0 #data = data.astype(np.uint32)
+                    #data = data.astype(np.uint32)
                     self.subwindow1.addImage(data)
+                    self.subwindow1.setYAxisInverted(flag=True)
+                      
             except Exception as e:
                 print(e)
         else:
             pass
+    
+    def roi_map_polygon(self,event):
+        try:
+            #self.mask_roi 
+            mask = (self.roi_map*0+1)
+            self.vertex = []
+            if event['event'] == 'drawingFinished':
+                coord = np.array(event['points'])
+                coord = coord.astype(int)
+                self.vertex.append(coord)
+                self.mask_roi = mask_making(mask,self.vertex)
+        except Exception as e:
+            print(e)
+            pass
 
+    def pttn_roi_sum_process(self,high_thrshd=1e6):
+        try:
+            t = time()
+            pttn_idx = self.pttn_idx[self.mask_roi].flatten()
+            path_idx = self.path_idx[self.mask_roi].flatten()
+            #mask_check = Plot2D()
+            #mask_check.addImage(self.mask_roi)
+            #mask_check.show()
+            if self.bkgd_sub_box.isChecked():
+                if not isinstance(self.bkgd,type(None)):
+                    bkgd = np.copy(self.bkgd).astype(np.float)
+                else:
+                    bkgd = 0
+            else:
+                bkgd = 0
+            for i,(p1,p2) in enumerate(zip(pttn_idx,path_idx)):
+                with h5py.File(self.h5_list[p2],'r') as f:
+                    data = np.copy(f['entry_0000/measurement/data'][p1]).astype(np.float)
+                    data[data>1e6] = 0
+                #print(bkgd)
+                if i == 0:
+                    sum_pttn = data - bkgd
+                else:
+                    sum_pttn += (data-bkgd)
+            sum_pttn[sum_pttn<1] = 0
+            if isinstance(self.pttn_roi_sum_window,type(None)): 
+                self.pttn_roi_sum_window = Plot2D()
+            self.pttn_roi_sum_window.addImage(sum_pttn)
+            self.pttn_roi_sum_window.show()
+            print(time()-t)
+        except Exception as e:
+            print(e)
+            pass 
+    
 class Iq_calculate(QWidget):
     def __init__(self,obj):#h5_list,path_idx,pttn_idx,scan_shape,obj):
         super().__init__()
@@ -640,12 +702,16 @@ class qphi_calculate(QWidget):
         
     
     def load_mask_window(self):
-        self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
-        self.mask = np.load(self.mask_file)['mask']
+        try:
+            self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
+            self.mask = np.load(self.mask_file)['mask']
+        except Exception as e:
+            print(e)
+            pass
     
     def load_poni_window(self):
-        self.poni,_ = QFileDialog.getOpenFileName(self,"load poni","","")
         try:
+            self.poni,_ = QFileDialog.getOpenFileName(self,"load poni","","")
             self.ai = pyFAI.load(self.poni)
         except Exception as e:
             print(e)
@@ -717,6 +783,7 @@ class qphi_analysis(QWidget):
         self.qphi_ana_UI()
         self.fn = None
         self.bkgd = None
+        #self.vertex = []
         self.show()
     
     def qphi_ana_UI(self):
@@ -770,6 +837,11 @@ class qphi_analysis(QWidget):
         self.roi_sum_bttn.move(10,190)
         self.roi_sum_bttn.clicked.connect(self.qphi_roi_sum)
         
+        self.qphi_roi_ave_bttn = QPushButton('qphi roi ave',roi_setup)
+        self.qphi_roi_ave_bttn.move(100,190)
+        self.qphi_roi_ave_bttn.clicked.connect(self.qphi_roi_ave)
+        self.ave_window = None
+        
         self.bkgd_load_bttn = QPushButton('bkgd load',roi_setup)
         self.bkgd_load_bttn.move(10,220)
         self.bkgd_load_bttn.clicked.connect(self.load_bkgd)
@@ -788,7 +860,11 @@ class qphi_analysis(QWidget):
         try:
             qmin = float(self.qmin.text())
             qmax = float(self.qmax.text())
-            qphi = np.copy(self.qphi)
+            qphi = np.copy(self.qphi).astype(np.float)
+            if self.bkgd_sub_box.isChecked():
+                if not isinstance(self.bkgd,type(None)):
+                    bkgd = np.copy(self.bkgd).reshape(1,1,qphi.shape[-2],qphi.shape[-1])
+                    qphi = qphi - np.tile(bkgd,(qphi.shape[0],qphi.shape[1],1,1))
             ori_mat,wid_mat = ori_determ2d(qphi,self.a,self.q,qmin,qmax,
                                 ll_thrhd = 0, hl_thrhd = np.inf)
             #
@@ -796,18 +872,25 @@ class qphi_analysis(QWidget):
             self.ori_map_widget.setGeometry(500,700,1300,500)
             ori_map = Plot2D(self.ori_map_widget)#PlotWindow(position=True)
             ori_map.setGeometry(0,10,640,480)
-            ori_map.addImage(ori_mat,legend='ori_map',replace=False)
+            colormap={'name':'gray','normalization':'linear',
+                                        'autoscale':False,'vmin':0,'vamx':180}
+            ori_map.addImage(ori_mat,legend='ori_map',)
+            ori_map.setDefaultColormap(colormap)
+            
             wid_map = Plot2D(self.ori_map_widget)
             wid_map.setGeometry(660,10,640,480)
-            wid_map.addImage(wid_mat,legend='wid_map',replace=False)
+            wid_map.addImage(wid_mat,legend='wid_map')
             self.ori_map_widget.show()
         except Exception as e:
             print(e)
             pass
     
     def load_bkgd(self):
-        self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
-        self.bkgd = fabio.open(self.bkgd_fn).data
+        try:
+            self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
+            self.bkgd = fabio.open(self.bkgd_fn).data
+        except:
+            pass
              
     def qphi_roi_sum(self):
         try:
@@ -825,7 +908,7 @@ class qphi_analysis(QWidget):
             roi = sum_roi_2dmap(qphi,q=self.q,a=self.a,
                                 qmin=qmin,qmax=qmax,
                                 amin=amin,amax=amax)
-            
+            self.roi = np.copy(roi)
             #self.polygon_choose = QtCheckBox("polygon vertx",self)
             #self.polygon_choose.setGeometry(80,160,100,20)
             #self.polygon_choose.isChecked.connect(self.add_vertex)
@@ -834,7 +917,6 @@ class qphi_analysis(QWidget):
             self.qphi_roi_map = PlotWindow(roi_map)#,position=True)
             roi_map.setGeometry(220,20,680,640)
             self.qphi_roi_map.addImage(roi,replace=True)
-            
             toolBar = qt.QToolBar()
             self.qphi_roi_map.addToolBar(
             qt.Qt.BottomToolBarArea,
@@ -852,6 +934,7 @@ class qphi_analysis(QWidget):
             
             self.subwindow = None
             self.qphi_roi_map.sigPlotSignal.connect(self.roi_map_clicked)
+            self.qphi_roi_map.sigPlotSignal.connect(self.roi_map_polygon)
             roi_map.show()
             #self.subwindow.show()
          
@@ -866,10 +949,10 @@ class qphi_analysis(QWidget):
                 self.q = load_proc_dataset(self.fn,'q')
                 self.a = load_proc_dataset(self.fn,'angle')
                 self.qphi = load_proc_dataset(self.fn,'map_qphi')
-                self.qmin.setText(str(np.min(self.q)))
-                self.qmax.setText(str(np.max(self.q)))
-                self.amin.setText(str(np.min(self.a)))
-                self.amax.setText(str(np.max(self.a)))
+                self.qmin.setText(str(np.round(np.min(self.q),decimals=4)))
+                self.qmax.setText(str(np.round(np.max(self.q),decimals=4)))
+                self.amin.setText(str(np.round(np.min(self.a),decimals=4)))
+                self.amax.setText(str(np.round(np.max(self.a),decimals=4)))
             except Exception as e:
                 print(e)
         else:
@@ -889,7 +972,55 @@ class qphi_analysis(QWidget):
         self.fn,_ = QFileDialog.getOpenFileName(self,"open file","","")
         self.fileInputWin.setText(self.fn)
         self.load_proc_hdf()
-                            
+    
+    def roi_map_polygon(self,event):          
+        try:
+            self.mask_roi = self.qphi_roi_map.getSelectionMask()         
+            self.vertex = []
+            mask = (self.roi*0+1).astype(bool)
+            if event['event'] == 'drawingFinished':
+                coord = np.array(event['points'])
+                coord = coord.astype(np.int)
+                self.vertex.append(coord)
+                #print(vertex)
+                self.mask_roi = mask_making(mask,self.vertex)
+                # did't find the mask signal event, drawing signal emit before mask update
+                #self.mask_roi = self.qphi_roi_map.getSelectionMask()
+                #self.mask_roi = self.qphi_roi_map._maskToolsDockWidget.getSelectionMask()
+                #self.mask_roi = self.mask_roi.astype(bool)
+                #print(self.mask_roi.dtype)
+                # for test correctness of mask
+                #self.mask_display = Plot2D()
+                #self.mask_display.addImage(self.mask_roi)
+                #self.mask_display.show()
+        except Exception as e:
+                print(e)
+                pass
+    
+    def qphi_roi_ave(self):
+        try:
+            qphi = np.copy(self.qphi)
+            qphi[qphi==0] = np.nan
+            # have no idea why the dtype change to uint8 instance boolean here
+            # thus add one line to ensure the mask is boolean type
+            self.mask_roi = self.mask_roi.astype(bool)
+            #print(qphi.shape,qphi.dtype,self.mask_roi.shape,self.mask_roi.dtype)
+            qphi_ave = np.nanmean(qphi[self.mask_roi],axis=0).astype(float)
+            if isinstance(self.ave_window,type(None)):
+                self.ave_window = Plot2D(self.ave_window)
+            self.ave_window.show()
+            if self.bkgd_sub_box.isChecked():
+                #print(qphi_ave.dtype,self.bkgd.dtype)
+                qphi_ave = qphi_ave - self.bkgd.astype(np.float)
+            self.ave_window.addImage(qphi_ave,
+                origin=(0,-180),
+                scale=((self.q[-1]-self.q[0])/len(self.q),
+                       (self.a[-1]-self.a[0])/len(self.a))
+                )
+        except Exception as e:
+            print(e)
+            pass
+     
     def roi_map_clicked(self,event):
         widget = self.qphi_roi_map.getWidgetHandle()
         if event['event'] == 'mouseClicked':
@@ -909,8 +1040,9 @@ class qphi_analysis(QWidget):
                     if isinstance(self.bkgd,type(None)):
                         data = np.copy(self.qphi[row,col])
                     else:
+                        bkgd = np.copy(self.bkgd).astype(np.float)
                         data = np.copy(self.qphi[row,col])\
-                                 - self.bkgd
+                                 - bkgd
                 else:
                     data = np.copy(self.qphi[row,col])
                 #self.subwindow2.addImage(data,

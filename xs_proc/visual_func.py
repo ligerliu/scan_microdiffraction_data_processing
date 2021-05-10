@@ -63,8 +63,11 @@ def mask_making(int_map,
     m1 = (int_map<=low_int_thrshd)
     m1[int_map>=high_int_thrshd] = True
     if not isinstance(vertex,type(None)):
-        if not isinstance(vertex[0],list):
-            vertex = [vertex]
+        # if not isinstance(vertex[0],list):
+        #    vertex = [vertex]
+        # the definition of vertex[0] is confusing the program to work correctly
+        #if len(vertex[0]) < 3:
+        #    vertex = [vertex] 
         for _ in range(len(vertex)):
             p = draw_polygon(vertex[_],shape=shape)
             if _ == 0:
