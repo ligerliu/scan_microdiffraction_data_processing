@@ -34,6 +34,7 @@ class id13_h5_search:
             self.fn = "{}/{}_id13.h5".format(self.proposal_path,proposal)
             self.check_path(self.fn,'proposal {}'.format(proposal))
         self.file_sys = file_sys
+        self.data_h5path = data_h5path
     
     def check_path(self,path,name):
         if not os.path.exists(path):
@@ -94,15 +95,22 @@ class id13_h5_search:
                     
                 #should revise ct34 to beam intensity and ndetx to detx
                 try:
-                    self.ct34 = np.array(
-                       f["{}/measurement/ct34".format(self._data_name[0])])
-                    self.ndetx = np.array(
-                       f["{}/instrument/positioners/ndetx".format(self._data_name[0])])
+                    try:
+                        self.ct34 = np.array(
+                            f["{}/measurement/ct34".format(self._data_name[0])])
+                    except:
+                        self.ct34 = np.array(
+                           f["{}/measurement/ct24".format(self._data_name[0])])
                 except:
-                    self.ct34 = np.array(
-                       f["{}/measurement/ct24".format(self._data_name[0])])
+                    self.ct34  = None
+                
+                try:
                     self.ndetx = np.array(
-                       f["{}/instrument/positioners/udetx".format(self._data_name[0])])
+                        f["{}/instrument/positioners/ndetx".format(self._data_name[0])])
+                except:
+                    self.ndetx = np.array(
+                        f["{}/instrument/positioners/udetx".format(self._data_name[0])])
+                
                 if self.data_info["scan_type"] == u'akmap':
                     self.data_info["fast_axis"]=u[1][:-1]
                     self.data_info["fast_axis_start_pos"]=float(u[2][:-1])
@@ -192,7 +200,7 @@ class id13_h5_search:
                 else:
                     print('\n%d h5 files in this scan' %len(self.data_h5))
                 with h5py.File(self.data_h5[0],'r') as f:
-                    self.single_h5_shape = f["entry_0000/measurement/data"].shape
+                    self.single_h5_shape = f[self.data_h5path].shape
                 print('\n\n')
             else:
                 print("\n\nMore than one scan matched, please give more specific input")

@@ -109,7 +109,7 @@ def auto_proc_Iq(obj,
                            )
             #print(time.time()-tm)
             q    = res[0][0]
-            if unit == 'q_A^-1':
+            if units == 'q_A^-1':
                 #pyFAi integrate1d only support q_nm^-1 2theta and rm
                 q /= 10.
             Iq   = np.zeros((scan_shape[0],

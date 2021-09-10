@@ -181,6 +181,7 @@ def plot_qphi(qphi,
               mask=None,
               bkgd=None,
               **kwargs):
+    qphi = np.copy(qphi)
     if isinstance(q,type(None)):
         q = np.arange(qphi.shape[1])
     if isinstance(a,type(None)):

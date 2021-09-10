@@ -1,0 +1,11 @@
+In [20]: with h5py.File(fn,'r') as f:
+    ...:     %timeit f['entry_0000/measurement/data'][0]
+    ...:     %timeit f['entry_0000/measurement/data'][0].astype(float)
+    ...:     %timeit np.copy(f['entry_0000/measurement/data'][0])
+    ...:     %timeit np.copy(f['entry_0000/measurement/data'][0]).astype(float)
+    ...: 
+22.7 ms ± 46.5 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+40.4 ms ± 21.5 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+27.2 ms ± 36.9 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+42.4 ms ± 20.1 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+

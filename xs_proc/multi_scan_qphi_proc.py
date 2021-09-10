@@ -134,7 +134,8 @@ def auto_proc_qphi(obj,
                     pttn_idx = pttn_idx,
                     h5_path_list = h5_list)
             #break
-        except:
+        except Exception as e:
+            print(e)
             failed_pattern.append(obj._data_name)
             pass
     print(failed_pattern) 
