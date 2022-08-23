@@ -44,16 +44,19 @@ def jl_pyFAI_setup(obj,
 
 def save_Iq_as_h5(obj,save_path,name,
                     q,
-                    Iq,
+                    res,
                     path_idx,
                     pttn_idx,
-                    h5_path_list):
-    os.chdir(save_path)
-    if not os.path.exists("hdf_file"):
-        os.mkdir("hdf_file")
-    os.chdir("hdf_file")
+                    h5_path_list,
+                    total_pttn_num,
+                    single_h5_pttn_num,
+                    ):
+    hdf_folder = os.path.join(save_path,"hdf_file")
+    if not os.path.exists(hdf_folder):
+        os.mkdir(hdf_folder)
+    
     #print("\nhdf file writinge start time:\n%5.2f sec" %(time.time()-t))
-    h5_name = "{}_proc.h5".format(name)
+    h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
     with h5py.File(h5_name,'a') as f:
         if "integrate1d" in list(f):
             del f["integrate1d"]
@@ -62,14 +65,37 @@ def save_Iq_as_h5(obj,save_path,name,
         #fc = h5py.File(h5_name,"w")
         fc.create_dataset("beam_intensity",data=obj.ct34)
         fc.create_dataset("q",data=q)
-        fc.create_dataset("Iq",
-                          data=Iq,compression="gzip",
-                          #compression_opts=9
-                         )
+        #fc.create_dataset("Iq",
+        #                  data=Iq,compression="gzip",
+        #                  #compression_opts=9
+        #                 )
         fc.attrs["origin_h5_path"]=h5_path_list
         fc.create_dataset("path_idx",data=path_idx)
         fc.create_dataset("pttn_idx",data=pttn_idx)
-        fc.create_dataset("detector_distance",data=obj.ndetx)
+        #fc.create_dataset("detector_distance",data=obj.ndetx)
+        proc_h5_folder = os.path.join(hdf_folder,name)
+        if not os.path.exists(proc_h5_folder):
+            os.mkdir(proc_h5_folder)
+        idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
+        proc_h5_name_list = []
+        for _ in range(len(h5_path_list)):
+            proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
+            proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
+            proc_h5_name_list.append(proc_h5_name)
+            with h5py.File(proc_h5_name,'a') as k:
+                if "integrate1d" in list(k):
+                    del k["integrate1d"]
+                k.create_group("integrate1d")
+                Iq_data = []
+                for __ in range(idx_list[_][0],idx_list[_][1]):
+                    Iq_data.append(res[__][1])
+                k["integrate1d"].create_dataset("map_Iq",
+                                        data = np.array(Iq_data),
+                                        compression="gzip",
+                                        compression_opts=9)
+        fc.attrs["proc_h5_list"] = proc_h5_name_list
+    print('file save finished')
+
         #fc.close()
 
 def auto_proc_Iq(obj,
@@ -93,7 +119,7 @@ def auto_proc_Iq(obj,
             total_pttns,scan_shape,idx_list = scan_info(obj)
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
             ai = pyFAI.load(poni_file)    
-            #tm = time.time()
+            tm = time.time()
             
             res = parallel_func(scan_calculate_Iq,
                            num_core,
@@ -123,15 +149,18 @@ def auto_proc_Iq(obj,
                 #else:
                 i1 = int(_/scan_shape[1])
                 i2 = int(_%scan_shape[1])
-                Iq[i1,i2,:]   = res[_][1]
+                #Iq[i1,i2,:]   = res[_][1]
             name = obj._data_name[0].split('.')[0]
             if save:
                 save_Iq_as_h5(obj,save_path,name,
                     q    = q,
-                    Iq   = Iq,
+                    res   = res,
                     path_idx = path_idx,
                     pttn_idx = pttn_idx,
-                    h5_path_list = h5_list)
+                    h5_path_list = h5_list,
+                    total_pttn_num = total_pttns,
+                    single_h5_pttn_num = obj.single_h5_shape[0])
+            print(time.time()-tm)
             #break
         except:
             failed_pattern.append(obj._data_name)

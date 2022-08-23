@@ -4,7 +4,8 @@ from h5_data_search import *
 from xs_data_proc import *
 from proc_data_ana import *     
 from visual_func import * 
-from multi_scan_qphi_proc import * 
+from gui_scan_xrd_analysis import *
+#from multi_scan_qphi_proc import * 
 from multi_scan_Iq_proc import *
  
 import os
@@ -72,7 +73,7 @@ class Iq_calculate(QWidget):
         
         save_path_label = QLabel("save_path:",Iq_shape)
         save_path_label.setGeometry(10,100,60,20)
-        self.save_path_input = QLineEdit("/data/id13/inhouse12/jiliang/code_v3/example/sc5005/",Iq_shape)
+        self.save_path_input = QLineEdit("/data/id13/inhouse12/jiliang/code_v6/example/ihsc1698/",Iq_shape)
         self.save_path_input.setGeometry(80,100,120,20)
         
         process_button = QPushButton("process",self)
@@ -94,8 +95,9 @@ class Iq_calculate(QWidget):
     def load_Iq(self):
         try:
             self.Iq_h5,_ = QFileDialog.getOpenFileName(self,"load Iq","","")
-            self.Iq = load_proc_dataset(self.Iq_h5,'Iq',proc_type="integrate1d")
             self.q  = load_proc_dataset(self.Iq_h5,'q',proc_type="integrate1d")
+            num_core = int(self.core_num.text())
+            self.Iq = Iq_serries_2dmap(self.Iq_h5,num_cores=num_core)
         except Exception as e:
             print(e)
             pass
@@ -137,7 +139,10 @@ class Iq_calculate(QWidget):
     def load_mask_window(self):
         try:
             self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
-            self.mask = np.load(self.mask_file)['mask']
+            if '.npz' in self.mask_file:
+                self.mask = np.load(self.mask_file)['mask']
+            elif '.edf' in self.mask_file:
+                self.mask = (fabio.open(self.mask_file).data).astype(bool)
         except Exception as e:
             print(e)
             pass
@@ -179,30 +184,33 @@ class Iq_calculate(QWidget):
             q    = res[0][0]
             q   /= 10
             scan_shape = self.scan_shape
-            Iq   = np.zeros((scan_shape[0],
-                             scan_shape[1],
-                             len(res[0][1]),
-                            ))
-            for _ in range(len(res)):
-                #if len(idx_list) > 1:
-                #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
-                #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
-                #else:
-                i1 = int(_/scan_shape[1])
-                i2 = int(_%scan_shape[1])
-                Iq[i1,i2,:]   = res[_][1]
+            #Iq   = np.zeros((scan_shape[0],
+            #                 scan_shape[1],
+            #                 len(res[0][1]),
+            #                ))
+            #for _ in range(len(res)):
+            #    #if len(idx_list) > 1:
+            #    #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
+            #    #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
+            #    #else:
+            #    i1 = int(_/scan_shape[1])
+            #    i2 = int(_%scan_shape[1])
+            #    Iq[i1,i2,:]   = res[_][1]
             name = self.obj._data_name[0].split('.')[0]
             save_path =self.save_path_input.text()
             print(time()-t)
             save_Iq_as_h5(self.obj,save_path,name,
                     q    = q,
-                    Iq   = Iq,
+                    res   = res,
                     path_idx = self.path_idx,
                     pttn_idx = self.pttn_idx,
+                    total_pttn_num=self.total_pttns,
+                    single_h5_pttn_num = self.obj.single_h5_shape[0],
                     h5_path_list = self.h5_list)
+
             print(time()-t)#,'\n\nfuck complete')
             self.q  = q
-            self.Iq = Iq 
+            #self.Iq = Iq 
         except Exception as e:
             print(e)
             pass

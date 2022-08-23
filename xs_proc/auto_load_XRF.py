@@ -88,7 +88,7 @@ def auto_load_xrf(obj,
         if ('xmap3_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m = np.array(f[obj._data_name[nn]]['measurement']['xmap3_det0'])
             XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
-            XRF_roi = np.nanmean(XRF_m[:,:,eneger_roi[0]:eneger_roi[1]],axis=-1)
+            XRF_roi = np.nanmean(XRF_m[:,:,energy_roi[0]:energy_roi[1]],axis=-1)
         elif ('xmap2_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m =  np.array(f[obj._data_name[nn]]['measurement']['xmap2_det0'])
             XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])

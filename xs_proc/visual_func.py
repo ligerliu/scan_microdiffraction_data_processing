@@ -26,6 +26,7 @@ def draw_polygon(args,shape=None):
         c.append(_[0])
     return polygon(r,c,shape)
 
+
 def polygon_with_int_thrshd(int_map,
                             vertex,
                             low_int_thrshd = 0,
@@ -35,8 +36,8 @@ def polygon_with_int_thrshd(int_map,
     shape = int_map.shape
     #m1 = (int_map>=low_int_thrshd)
     #m1[m1>high_int_thrshd] = False
-    m1 = (int_map<=low_int_thrshd)
-    m1[int_map>=high_int_thrshd] = True
+    m1 = (int_map>=low_int_thrshd)
+    m1[int_map>=high_int_thrshd] = False
     if not isinstance(vertex,type(None)):
         if not isinstance(vertex[0],list):
             vertex = [vertex]
@@ -60,8 +61,8 @@ def mask_making(int_map,
     shape = int_map.shape
     #m1 = (int_map>=low_int_thrshd)
     #m1[m1>high_int_thrshd] = False
-    m1 = (int_map<=low_int_thrshd)
-    m1[int_map>=high_int_thrshd] = True
+    m1 = (int_map>=low_int_thrshd)
+    m1[int_map>=high_int_thrshd] = False
     if not isinstance(vertex,type(None)):
         # if not isinstance(vertex[0],list):
         #    vertex = [vertex]
@@ -73,6 +74,6 @@ def mask_making(int_map,
             if _ == 0:
                 m2 = np.zeros(shape).astype(bool)
             m2[p] = True
-    #m = (m1* m2).astype(bool)
-    m = m1+m2
+    m = (m1* m2).astype(bool)
+    #m = m1+m2
     return m

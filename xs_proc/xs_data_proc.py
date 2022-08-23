@@ -119,6 +119,7 @@ def samples_for_process(obj,kw_list):
 
 def scan_info(obj):
     # obj is the "id13_h5_search object includes id13 h5 data info
+    # here is rely on the ct34, ion chamber is in, should rely on other parameter, which is more reliable.
     h5_path_list = []
     h5_shape     = []
     h5_path_list = obj.data_h5
@@ -139,6 +140,9 @@ def scan_info(obj):
                 scan_shape = [h5_shape[0][0],1]
             elif np.size(obj.ct34) == (h5_shape[0][0]+1):
                 scan_shape = [h5_shape[0][0]+1,1]
+            else:
+                scan_shape  = h5_shape[0]
+                total_pttns = np.size(h5_shape[0])
     elif np.size(h5_shape) == 2:
         if np.size(obj.ct34) == h5_shape[0][0]*h5_shape[0][1]:
             total_pttns = h5_shape[0][0]*h5_shape[0][1]
@@ -149,11 +153,17 @@ def scan_info(obj):
         else:
             print("scan shape is inconsisted with planned")
             #sys.exit()
+                
             total_pttns = np.size(obj.ct34)
             if np.size(obj.ct34) == h5_shape[0][0]*h5_shape[0][1]:
                 scan_shape = [h5_shape[0][0],1]
             elif np.size(obj.ct34) == (h5_shape[0][0]+1)*(h5_shape[0][1]+1):
                 scan_shape = [h5_shape[0][0]+1,1]
+            else:
+                # ion chamber counts is not consist with sample.
+                scan_shape = h5_shape[0]
+                total_pttns = scan_shape[0]*scan_shape[1]
+                obj.ct34 = np.zeros((total_pttns,))
     
     # a soft problem here, we assum every h5 file is not including too much images. 
     # If the h5 is too large to load at once, this chunk size will cause memory problem.
@@ -179,7 +189,7 @@ def scan_info(obj):
         print('\n',"but only {} h5 files, each contains {}".format(len(h5_path_list),
                                                                   obj.single_h5_shape[0]))
         print('\n','collected patterns less than required patterns, the scan is incomplete')
-        sys.exit()
+        #sys.exit()
 
     return total_pttns,scan_shape,idx_list
 
@@ -257,27 +267,30 @@ def scan_pttn_roi_sum(num,
                  bkgd      = None,
                  mask      = None,
                  **kwargs):
-    h5_path  = h5_list[path_idx[num]]
-    pttn_num = pttn_idx[num]
-    with h5py.File(h5_path,"r") as f:
-        data_shape = f[data_path][0].shape
-        if right_bottom[0] == -1:
-            right_bottom[0] = data_shape[1]
-        if right_bottom[1] == -1:
-            right_bottom[1] = data_shape[0]
-        data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
-                                 left_top[0]:right_bottom[0]].astype(float)
-        data[data>hlm] = np.nan
-        data[data<llm] = np.nan
-        if not isinstance(bkgd,type(None)):
-            bkgd = bkgd[left_top[1]:right_bottom[1],
-                        left_top[0]:right_bottom[0]]
-            data -= bkgd
-        if not isinstance(mask,type(None)):
-            mask = mask[left_top[1]:right_bottom[1],
-                        left_top[0]:right_bottom[0]]
-            data[mask] = np.nan
-        I = np.nanmean(data)
+    try:
+        h5_path  = h5_list[path_idx[num]]
+        pttn_num = pttn_idx[num]
+        with h5py.File(h5_path,"r") as f:
+            data_shape = f[data_path][0].shape
+            if right_bottom[0] == -1:
+                right_bottom[0] = data_shape[1]
+            if right_bottom[1] == -1:
+                right_bottom[1] = data_shape[0]
+            data = f[data_path][pttn_num][left_top[1]:right_bottom[1],
+                                     left_top[0]:right_bottom[0]].astype(float)
+            data[data>hlm] = np.nan
+            data[data<llm] = np.nan
+            if not isinstance(bkgd,type(None)):
+                bkgd = bkgd[left_top[1]:right_bottom[1],
+                            left_top[0]:right_bottom[0]]
+                data -= bkgd
+            if not isinstance(mask,type(None)):
+                mask = mask[left_top[1]:right_bottom[1],
+                            left_top[0]:right_bottom[0]]
+                data[mask] = np.nan
+            I = np.nanmean(data)
+    except:
+        I = 0
     return I
 
 def scan_pttn_roi(num,

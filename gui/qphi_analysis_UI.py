@@ -4,6 +4,7 @@ from h5_data_search import *
 from xs_data_proc import *
 from proc_data_ana import *     
 from visual_func import * 
+from gui_scan_xrd_analysis import *
 from multi_scan_qphi_proc import * 
 from multi_scan_Iq_proc import *
  
@@ -104,7 +105,6 @@ class qphi_analysis(QWidget):
         
         self.bkgd_sub_box = QCheckBox('bkgd subtract',roi_setup)
         self.bkgd_sub_box.move(10,250)
-        #self.bkgd_sub_box.stateChanged.connect(self.qphi_roi_sum)
         
         self.ori_map_bttn = QPushButton('ori map',roi_setup)
         self.ori_map_bttn.move(10,280)
@@ -116,21 +116,25 @@ class qphi_analysis(QWidget):
         try:
             qmin = float(self.qmin.text())
             qmax = float(self.qmax.text())
-            qphi = np.copy(self.qphi).astype(np.float)
-            #qphi[(qphi == 0.)] = np.nan
+            low_thrd = float(self.low_int_thrhd_line.text())
+            high_thrd = float(self.high_int_thrhd_line.text())
             if self.bkgd_sub_box.isChecked():
-                if not isinstance(self.bkgd,type(None)):
-                    bkgd = np.copy(self.bkgd).reshape(1,1,qphi.shape[-2],qphi.shape[-1]).astype(float)
-                    qphi = qphi - np.tile(bkgd,(qphi.shape[0],qphi.shape[1],1,1))
-            ori_mat,wid_mat = ori_determ2d(qphi,self.a,self.q,qmin,qmax,
-                                ll_thrhd = 0, hl_thrhd = np.inf)
-            #
+                ori_mat,wid_mat = ori_determ2d_para(
+                                self.fn,self.a,self.q,qmin,qmax,
+                                ll_thrhd = low_thrd, hl_thrhd = high_thrd,
+                                bkgd=self.bkgd)
+            else:
+                ori_mat,wid_mat = ori_determ2d_para(
+                                self.fn,self.a,self.q,qmin,qmax,
+                                ll_thrhd = low_thrd, hl_thrhd = high_thrd)
+            ori_mat[ori_mat<0] = 180 + ori_mat[ori_mat<0]
+            ori_mat[ori_mat>90] = 180 - ori_mat[ori_mat>90]
             self.ori_map_widget = QWidget()
             self.ori_map_widget.setGeometry(500,700,1300,500)
             ori_map = Plot2D(self.ori_map_widget)#PlotWindow(position=True)
             ori_map.setGeometry(0,10,640,480)
-            colormap={'name':'gray','normalization':'linear',
-                                        'autoscale':False,'vmin':0,'vamx':180}
+            colormap={'name':'jet','normalization':'linear',
+                      'autoscale':False,'vmin':0,'vamx':90}
             ori_map.addImage(ori_mat,legend='ori_map',colormap=colormap)
             #ori_map.setDefaultColormap(colormap)
             
@@ -156,27 +160,29 @@ class qphi_analysis(QWidget):
             qmax = float(self.qmax.text())
             amin = float(self.amin.text())
             amax = float(self.amax.text())
-            qphi = np.copy(self.qphi)
+            #qphi = np.copy(self.qphi)
             low_thrd = float(self.low_int_thrhd_line.text())
-            qphi[qphi<low_thrd] = np.nan
-            high_thrd = self.high_int_thrhd_line.text()
+            #qphi[qphi<low_thrd] = np.nan
+            high_thrd = float(self.high_int_thrhd_line.text())
             if high_thrd != '':
                 high_thrd = float(high_thrd)
-                qphi[qphi>high_thrd] = np.nan
+            else:
+                high_thrd = np.inf
+                #qphi[qphi>high_thrd] = np.nan
             if self.bkgd_sub_box.isChecked():
                 if not isinstance(self.bkgd,type(None)):
-                    qphi = qphi_bkgd_sub(self.bkgd,qphi)
+                    roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
+                           qmin=qmin,qmax=qmax,amin=amin,amax=amax,
+                           low_thrd=low_thrd,high_thrd=high_thrd,bkgd=self.bkgd) 
                 else:
-                    pass
+                    roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
+                           qmin=qmin,qmax=qmax,amin=amin,amax=amax,
+                           low_thrd=low_thrd,high_thrd=high_thrd) 
             else:
-                pass
-            roi = sum_roi_2dmap(qphi,q=self.q,a=self.a,
-                                qmin=qmin,qmax=qmax,
-                                amin=amin,amax=amax)
+                roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
+                           qmin=qmin,qmax=qmax,amin=amin,amax=amax,
+                           low_thrd=low_thrd,high_thrd=high_thrd) 
             self.roi = np.copy(roi)
-            #self.polygon_choose = QtCheckBox("polygon vertx",self)
-            #self.polygon_choose.setGeometry(80,160,100,20)
-            #self.polygon_choose.isChecked.connect(self.add_vertex)
             
             roi_map = QWidget(self)
             self.qphi_roi_map = PlotWindow(roi_map)#,position=True)
@@ -214,7 +220,7 @@ class qphi_analysis(QWidget):
             try:
                 self.q = load_proc_dataset(self.fn,'q')
                 self.a = load_proc_dataset(self.fn,'angle')
-                self.qphi = load_proc_dataset(self.fn,'map_qphi')
+                self.proc_h5_list = load_proc_dataset(self.fn,'proc_h5_list')
                 self.qmin.setText(str(np.round(np.min(self.q),decimals=4)))
                 self.qmax.setText(str(np.round(np.max(self.q),decimals=4)))
                 self.amin.setText(str(np.round(np.min(self.a),decimals=4)))
@@ -245,33 +251,33 @@ class qphi_analysis(QWidget):
             self.vertex = []
             mask = (self.roi*0+1).astype(bool)
             if event['event'] == 'drawingFinished':
+                #for _ in event:
+                #    print(_)
                 coord = np.array(event['points'])
                 coord = coord.astype(np.int)
                 self.vertex.append(coord)
                 #print(vertex)
                 self.mask_roi = mask_making(mask,self.vertex)
-                # did't find the mask signal event, drawing signal emit before mask update
-                #self.mask_roi = self.qphi_roi_map.getSelectionMask()
-                #self.mask_roi = self.qphi_roi_map._maskToolsDockWidget.getSelectionMask()
-                #self.mask_roi = self.mask_roi.astype(bool)
-                #print(self.mask_roi.dtype)
-                # for test correctness of mask
-                #self.mask_display = Plot2D()
-                #self.mask_display.addImage(self.mask_roi)
-                #self.mask_display.show()
         except Exception as e:
                 print(e)
                 pass
     
     def qphi_roi_ave(self):
         try:
-            qphi = np.copy(self.qphi)
-            qphi[qphi==0] = np.nan
             # have no idea why the dtype change to uint8 instance boolean here
             # thus add one line to ensure the mask is boolean type
             self.mask_roi = self.mask_roi.astype(bool)
             #print(qphi.shape,qphi.dtype,self.mask_roi.shape,self.mask_roi.dtype)
-            qphi_ave = np.nanmean(qphi[self.mask_roi],axis=0).astype(float)
+            scan_shape = load_proc_qphi_size(self.fn)
+            rr,cc = np.mgrid[0:scan_shape[0],0:scan_shape[1]] 
+            r = rr[self.mask_roi]
+            c = cc[self.mask_roi]
+            qphi = []
+            for _ in range(len(r)):
+                qphi.append(load_proc_single_qphi(self.fn,r[_],c[_]))
+            qphi = np.array(qphi)
+            qphi[qphi==0] = np.nan
+            qphi_ave = np.nanmean(qphi,axis=0).astype(float)
             if isinstance(self.ave_window,type(None)):
                 self.ave_window = Plot2D(self.ave_window)
             self.ave_window.show()
@@ -306,16 +312,15 @@ class qphi_analysis(QWidget):
                 col,row = (int(dataPos[0]),int(dataPos[1]))
                 if self.bkgd_sub_box.isChecked():
                     if isinstance(self.bkgd,type(None)):
-                        data = np.copy(self.qphi[row,col])
+                        data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
                     else:
                         bkgd = np.copy(self.bkgd).astype(np.float)
-                        data = np.copy(self.qphi[row,col])\
-                                 - bkgd
+                        data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
+                        data = data - bkgd
                 else:
-                    data = np.copy(self.qphi[row,col])
+                    data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
                 data[np.isnan(data)] = 0
                 data[np.isinf(data)] = 0
-                #self.subwindow2.addImage(data,
                 colormap = setup_colormap(data)
                 self.subwindow2.setImage(data,
                 origin=(0,-180),
@@ -334,24 +339,6 @@ class qphi_analysis(QWidget):
                 converters=[('X', lambda x,y: x),
                 ('Y', lambda x,y: y)])
                 toolBar.addWidget(position)
-                #self.subwindow2.setLimits(self.q[0],
-                #            self.q[-1],self.a[0],self.a[-1])
-                
-                # this is for raw x,y input without rescale
-                #toolBar = qt.QToolBar()
-                #
-                #self.subwindow2.addToolBar(
-                #qt.Qt.BottomToolBarArea,
-                #toolBar)
-                #
-                #position = PositionInfo(plot= \
-                #self.subwindow2,
-                #converters=[('Q', 
-                #lambda x,y: self.q[int(np.round(x))]),
-                #('Azimuth',
-                #lambda x,y: self.a[int(np.round(y))])])
-                #
-                #toolBar.addWidget(position)
             except Exception as e:
                 print(e)
         else:

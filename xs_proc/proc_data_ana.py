@@ -17,6 +17,7 @@ def load_proc(fn,proc_type="integrate2d"):
         q         = np.array(fc['q'])#[:]
         # str could not be saved as dataset, thus save an attrs
         path_list = np.array(fc.attrs['origin_h5_path'])#[:]
+        #proc_path_list = np.array(fc.attrs['proc_h5_list'])
         path_idx  = np.array(fc['path_idx'])#[:]
         pttn_idx  = np.array(fc['pttn_idx'])#[:]
     return azi,ct,qphi,q,path_list,path_idx,pttn_idx
@@ -28,6 +29,8 @@ def load_proc_dataset(fn,kw,proc_type="integrate2d"):
         fc = f[proc_type]
         if kw == 'origin_h5_path':
             return fc.attrs['origin_h5_path'][:]
+        elif kw == 'proc_h5_list':
+            return fc.attrs['proc_h5_list'][:]
         else:
             return np.array(fc[kw])
     

@@ -67,14 +67,26 @@ class id13_h5_search:
                                     self.sample  = path
                                     self.dataset = subpath
                                     self.scannum = "scan%05d" %int(
-                                                       p[-1].split('.')[0])
-                                    
+                                                  p[-1].split('.')[0])
+                                                  
                                     self.data_path = os.path.join(
-                                            self.proposal_path,
-                                            self.sample,
-                                            self.dataset,
-                                            self.scannum,
-                                            "eiger")
+                                                self.proposal_path,
+                                                self.sample,
+                                                self.dataset,
+                                                self.scannum,
+                                                "eiger")
+                                    if os.path.isdir(self.data_path):
+                                        pass
+                                    else:
+                                        self.scannum = "scan%04d" %int(
+                                                      p[-1].split('.')[0])
+                                        
+                                        self.data_path = os.path.join(
+                                                    self.proposal_path,
+                                                    self.sample,
+                                                    self.dataset,
+                                                    self.scannum,
+                                                    "eiger")
                                     print('\nsample:\n{}'.format(path))
                                     print('\ndataset:\n{}'.format(subpath))
                                     print('\nscan:\n{}'.format(self.scannum))
@@ -104,12 +116,15 @@ class id13_h5_search:
                 except:
                     self.ct34  = None
                 
-                try:
-                    self.ndetx = np.array(
-                        f["{}/instrument/positioners/ndetx".format(self._data_name[0])])
+                try:                
+                    try:
+                        self.ndetx = np.array(
+                            f["{}/instrument/positioners/ndetx".format(self._data_name[0])])
+                    except:
+                        self.ndetx = np.array(
+                            f["{}/instrument/positioners/udetx".format(self._data_name[0])])
                 except:
-                    self.ndetx = np.array(
-                        f["{}/instrument/positioners/udetx".format(self._data_name[0])])
+                    self.ndetx = None
                 
                 if self.data_info["scan_type"] == u'akmap':
                     self.data_info["fast_axis"]=u[1][:-1]
@@ -129,16 +144,22 @@ class id13_h5_search:
                 elif self.data_info["scan_type"] == u'loopscan':
                     #self.data_info["exposure_time"]=u[1]
                     #self.shape = np.array((1,))
-                    self.data_info["exposure_time"] = f["{}/measurement/acq_time_3".format(self._data_name[0])][0]
-                    self.shape = np.array((len(f["{}/measurement/acq_time_3".format(self._data_name[0])]),))
-                elif self.data_info["scan_type"] == u'dscan':
+                    try:
+                        self.data_info["exposure_time"] = f["{}/measurement/acq_time_3".format(self._data_name[0])][0]
+                        self.shape = np.array((len(f["{}/measurement/acq_time_3".format(self._data_name[0])]),))
+                    except:    
+                        self.data_info["exposure_time"] = f["{}/measurement/acq_time_2".format(self._data_name[0])][0]
+                        self.shape = np.array((len(f["{}/measurement/acq_time_2".format(self._data_name[0])]),))
+                elif (self.data_info["scan_type"] == u'dscan') or \
+                     (self.data_info["scan_type"] == u'ascan'):
                     self.data_info["scan_axis"]= u[1]
                     self.data_info["start_pos"]= u[2]  
                     self.data_info["end_pos"  ]= u[3]
                     self.data_info["num_step" ]= u[4]
                     self.data_info["exposure_time"]= u[5] 
                     self.shape = np.array((int(u[4]),))
-                elif self.data_info["scan_type"]  == u'dmesh':
+                elif (self.data_info["scan_type"]  == u'dmesh') or \
+                     (self.data_info["scan_type"]  == u'amesh'):
                     self.data_info["axis1"]=u[1]
                     self.data_info["axis1_start_pos"]=float(u[2])
                     self.data_info["axis1_end_pos"]=float(u[3])

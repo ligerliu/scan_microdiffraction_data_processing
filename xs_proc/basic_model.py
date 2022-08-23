@@ -8,7 +8,7 @@ the calculation corresponds to the 1D intensity profile
 
 def spherical_form_factor(q,r,density=1):
     V = 4./3*np.pi*r**3
-    return density*((3*V*(np.sin(q*r)-q*r*np.cos(q*r))/((q*r)**3))**2/V
+    return density*((3*V*(np.sin(q*r)-q*r*np.cos(q*r))/((q*r)**3)))**2/V
 
 def box_form_factor(q,width,density=1):
     return density*np.sinc(q*width)
@@ -26,11 +26,11 @@ def norm_func(x):
     #guassian function with mean = 0 and sigma =1
     return np.exp(-x**2/2)/np.sqrt(2*np.pi)
     
-def poly_diversity(func,q,r,dr,dsigma=1,nsigma=3):
+def poly_dispersity(func,q,r,dr,dsigma=1,nsigma=3):
     # for poly_diversity, pdf using the norm_func with sigma = 1
     # sample points depends on both nsigma (largest sigma reached) and 
     # the sampling span within each sigma region
-    for i in range(int(nsigma/disgma)*2+1):
+    for i in range(int(nsigma/dsigma)*2+1):
         p = i - int(nsigma/dsigma)
         if i == 0:
             I = func(q,r+dr*dsigma*p)*norm_func(p*dsigma)

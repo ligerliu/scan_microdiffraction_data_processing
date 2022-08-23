@@ -62,7 +62,7 @@ class XRF_UI(QWidget):
                                     energy_roi = (self.Emin,self.Emax)
                                     )
 
-            #print(np.max(self.xrf_map))
+            print(np.max(self.xrf_map))
             self.xrf_roi_show = PlotWindow(self)#,position=True)
             colormap = setup_colormap(self.xrf_map)
             self.xrf_roi_show.addImage(self.xrf_map,colormap=colormap)

@@ -48,7 +48,7 @@ class roi_sum(QWidget):
         up_corner.setGeometry(20,20,200,20)
         up_corner_label = QLabel('up corner',up_corner)
         up_corner_label.setGeometry(0,0,80,20)
-        up_corner_input = QLineEdit('0,0',up_corner)
+        up_corner_input = QLineEdit('1100,1100',up_corner)
         self.ul_corner_set(up_corner_input.text())
         up_corner_input.setGeometry(100,0,80,20)
         up_corner_input.textChanged[str].connect(self.ul_corner_set)
@@ -57,16 +57,17 @@ class roi_sum(QWidget):
         dr_corner.setGeometry(20,60,200,20)
         dr_corner_label = QLabel('down corner',dr_corner)
         dr_corner_label.setGeometry(0,0,80,20)
-        dr_corner_input = QLineEdit('-1,-1',dr_corner)
+        dr_corner_input = QLineEdit('1300,1300',dr_corner)
         self.dr_corner_set(dr_corner_input.text())
         dr_corner_input.setGeometry(100,0,80,20)
         dr_corner_input.textChanged[str].connect(self.dr_corner_set)
         
         num_core_ui = QWidget(self)
         num_core_ui.setGeometry(20,100,200,20)
-        num_core_label = QLabel('down corner',num_core_ui)
+        num_core_label = QLabel('num cores',num_core_ui)
         num_core_label.setGeometry(0,0,80,20)
-        self.num_core_input = QLineEdit('12',num_core_ui)
+        self.num_core_input = QLineEdit('24',num_core_ui)
+        self.num_core_input.setGeometry(100,0,80,20)
 
         proc_button = QPushButton('process',self)
         proc_button.setGeometry(20,130,80,20)
@@ -78,11 +79,25 @@ class roi_sum(QWidget):
         self.pttn_roi_sum_window = None
          
         self.bkgd_load_bttn = QPushButton('bkgd load',self)
-        self.bkgd_load_bttn.move(10,220)
+        self.bkgd_load_bttn.move(20,220)
         self.bkgd_load_bttn.clicked.connect(self.load_bkgd)
         
         self.bkgd_sub_box = QCheckBox('bkgd subtract',self)
-        self.bkgd_sub_box.move(10,250)
+        self.bkgd_sub_box.move(20,250)
+        
+        pttn_vmin_input_ui = QWidget(self)
+        pttn_vmin_input_ui.setGeometry(20,300,200,20)
+        pttn_vmin_label = QLabel('pttn_vmin',pttn_vmin_input_ui)
+        pttn_vmin_label.setGeometry(0,0,80,20)
+        self.pttn_vmin_input = QLineEdit('0',pttn_vmin_input_ui)
+        self.pttn_vmin_input.setGeometry(100,0,80,20)
+        
+        pttn_vmax_input_ui = QWidget(self)
+        pttn_vmax_input_ui.setGeometry(20,330,200,20)
+        pttn_vmax_label = QLabel('pttn_vmax',pttn_vmax_input_ui)
+        pttn_vmax_label.setGeometry(0,0,80,20)
+        self.pttn_vmax_input = QLineEdit('0.3',pttn_vmax_input_ui)
+        self.pttn_vmax_input.setGeometry(100,0,80,20) 
         
         self.show()
          
@@ -127,7 +142,11 @@ class roi_sum(QWidget):
                                 left_top  = self.ul,
                                 right_bottom = self.dr,
                                 )
-            self.roi_map = np.array(res).reshape(self.scan_shape)    
+            self.roi_map = np.zeros(self.scan_shape)
+            for _ in range(self.scan_shape[0]):
+                for __ in range(self.scan_shape[1]):
+                    self.roi_map[_,__] = res[int(_*self.scan_shape[1]+__)]
+            #self.roi_map = np.array(res).reshape(self.scan_shape)    
             self.roi_show = PlotWindow(self)#,position=True)
             colormap = setup_colormap(self.roi_map)
             self.roi_show.addImage(self.roi_map,colormap=colormap)
@@ -178,7 +197,9 @@ class roi_sum(QWidget):
                             data = data - bkgd
                     data[data<1] = 0 #data = data.astype(np.uint32)
                     #data = data.astype(np.uint32)
-                    colormap = setup_colormap(data)
+                    vmin = float(self.pttn_vmin_input.text())
+                    vmax = float(self.pttn_vmax_input.text())
+                    colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
                     self.subwindow1.addImage(data,colormap=colormap)
                     self.subwindow1.setYAxisInverted(flag=True)
                     self.subwindow1.setKeepDataAspectRatio(True)                      
@@ -229,8 +250,12 @@ class roi_sum(QWidget):
             sum_pttn /= (i+1)
             if isinstance(self.pttn_roi_sum_window,type(None)): 
                 self.pttn_roi_sum_window = Plot2D()
-            colormap = setup_colormap(sum_pttn)
+            vmin = float(self.pttn_vmin_input.text())
+            vmax = float(self.pttn_vmax_input.text())
+            colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
             self.pttn_roi_sum_window.addImage(sum_pttn,colormap=colormap)
+            self.pttn_roi_sum_window.setYAxisInverted(flag=True)
+            self.pttn_roi_sum_window.setKeepDataAspectRatio(True)                      
             self.pttn_roi_sum_window.show()
             print(time()-t)
         except Exception as e:

@@ -96,7 +96,10 @@ class qphi_calculate(QWidget):
     def load_mask_window(self):
         try:
             self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
-            self.mask = np.load(self.mask_file)['mask']
+            if '.npz' in self.mask_file:
+                self.mask = np.load(self.mask_file)['mask']
+            elif '.edf' in self.mask_file:
+                self.mask = (fabio.open(self.mask_file).data).astype(bool)
         except Exception as e:
             print(e)
             pass
@@ -140,27 +143,29 @@ class qphi_calculate(QWidget):
             q    = res[0][1]
             azi  = res[0][2]
             scan_shape = self.scan_shape
-            qphi = np.zeros((scan_shape[0],
-                             scan_shape[1],
-                             res[0][0].shape[0],
-                             res[0][0].shape[1]))
-            for _ in range(len(res)):
-                #if len(idx_list) > 1:
-                #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
-                #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
-                #else:
-                i1 = int(_/scan_shape[1])
-                i2 = int(_%scan_shape[1])
-                qphi[i1,i2,:]   = res[_][0]
+            #qphi = np.zeros((scan_shape[0],
+            #                 scan_shape[1],
+            #                 res[0][0].shape[0],
+            #                 res[0][0].shape[1]))
+            #for _ in range(len(res)):
+            #    #if len(idx_list) > 1:
+            #    #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
+            #    #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
+            #    #else:
+            #    i1 = int(_/scan_shape[1])
+            #    i2 = int(_%scan_shape[1])
+            #    qphi[i1,i2,:]   = res[_][0]
             name = self.obj._data_name[0].split('.')[0]
             save_path =self.save_path_input.text()
             print(time()-t)
             save_qphi_as_h5(self.obj,save_path,name,
                     q    = q,
                     azi  = azi,
-                    qphi = qphi,
+                    res = res,
                     path_idx = self.path_idx,
                     pttn_idx = self.pttn_idx,
+                    total_pttn_num=self.total_pttns,
+                    single_h5_pttn_num = self.obj.single_h5_shape[0],
                     h5_path_list = self.h5_list)
             print(time()-t)#,'\n\nfuck complete')
         except Exception as e:

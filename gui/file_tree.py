@@ -7,6 +7,7 @@ import numpy as np
 
 class tree(QWidget):
     def __init__(self):
+        # inital inherited QWidget
         super().__init__()
         self.title = 'Tree of h5 data'
         self.left = 200

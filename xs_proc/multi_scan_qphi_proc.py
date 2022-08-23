@@ -42,37 +42,79 @@ def jl_pyFAI_setup(obj,
         poni = poni
     return poni,mask
 
+#def save_proc_h5(num,h5_path_list,name,proc_h5_folder,
+#                idx_list,res):
+#       proc_h5_name = "{}_{:05d}_proc.h5".format(name,num)
+#       proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
+#       with h5py.File(proc_h5_name,'a') as k:
+#           if "integrate2d" in list(k):
+#               del k["integrate2d"]
+#           k.create_group("integrate2d")
+#           qphi_data = []
+#           for __ in range(idx_list[num][0],idx_list[num][1]):
+#               qphi_data.append(res[__][0])
+#           k["integrate2d"].create_dataset("map_qphi",
+#                                   data = np.array(qphi_data),
+#                                   compression="gzip",
+#                                   compression_opts=9)
+#       return proc_h5_name
+
 def save_qphi_as_h5(obj,save_path,name,
                     q,
                     azi,
-                    qphi,
+                    res,
                     path_idx,
                     pttn_idx,
-                    h5_path_list):
-    os.chdir(save_path)
-    if not os.path.exists("hdf_file"):
-        os.mkdir("hdf_file")
-    os.chdir("hdf_file")
+                    h5_path_list,
+                    total_pttn_num,
+                    single_h5_pttn_num):
+    hdf_folder = os.path.join(save_path,"hdf_file")
+    if not os.path.exists(hdf_folder):
+        os.mkdir(hdf_folder)
     #print("\nhdf file writinge start time:\n%5.2f sec" %(time.time()-t))
-    h5_name = "{}_proc.h5".format(name)
+    h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
     with h5py.File(h5_name,'a') as f:
         if "integrate2d" in list(f):
             del f["integrate2d"]
         f.create_group("integrate2d")
         fc = f['integrate2d']
-        #fc = h5py.File(h5_name,"w")
         fc.create_dataset("beam_intensity",data=obj.ct34)
         fc.create_dataset("q",data=q)
         fc.create_dataset("angle",data=azi)
-        fc.create_dataset("map_qphi",
-                          data=qphi,compression="gzip",
-                          #compression_opts=9
-                         )
         fc.attrs["origin_h5_path"]=h5_path_list
         fc.create_dataset("path_idx",data=path_idx)
         fc.create_dataset("pttn_idx",data=pttn_idx)
-        fc.create_dataset("detector_distance",data=obj.ndetx)
-        #fc.close()
+        #fc.create_dataset("detector_distance",data=obj.ndetx)
+        proc_h5_folder = os.path.join(hdf_folder,name)
+        if not os.path.exists(proc_h5_folder):
+            os.mkdir(proc_h5_folder)
+        idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
+        proc_h5_name_list = []
+        # here it works, but should be parallelized to accelerate
+        #name_res = parallel_func(save_proc_h5,12,
+        #            np.arange(len(h5_path_list)),
+        #            h5_path_list=h5_path_list,name=name,
+        #            proc_h5_folder=proc_h5_folder,
+        #            idx_list=idx_list,res=res)
+        #for _ in name_res:
+        #    proc_h5_name_list.append(_)
+        for _ in range(len(h5_path_list)):
+            proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
+            proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
+            proc_h5_name_list.append(proc_h5_name)
+            with h5py.File(proc_h5_name,'a') as k:
+                if "integrate2d" in list(k):
+                    del k["integrate2d"]
+                k.create_group("integrate2d")
+                qphi_data = []
+                for __ in range(idx_list[_][0],idx_list[_][1]):
+                    qphi_data.append(res[__][0])
+                k["integrate2d"].create_dataset("map_qphi",
+                                        data = np.array(qphi_data),
+                                        compression="gzip",
+                                        compression_opts=9)
+        fc.attrs["proc_h5_list"] = proc_h5_name_list
+    print('file save finished')
 
 def auto_proc_qphi(obj,
               samples,
@@ -95,7 +137,7 @@ def auto_proc_qphi(obj,
             total_pttns,scan_shape,idx_list = scan_info(obj)
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
             ai = pyFAI.load(poni_file)    
-            #tm = time.time()
+            tm = time.time()
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
                            np.arange(len(path_idx.flatten())),
@@ -109,30 +151,21 @@ def auto_proc_qphi(obj,
                            a_npts    = a_npts,
                            **kwargs
                            )
-            #print(time.time()-tm)
+            print(time.time()-tm)
             q    = res[0][1]
             azi  = res[0][2]
-            qphi = np.zeros((scan_shape[0],
-                             scan_shape[1],
-                             res[0][0].shape[0],
-                             res[0][0].shape[1])) 
-            for _ in range(len(res)):
-                #if len(idx_list) > 1:
-                #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
-                #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
-                #else:
-                i1 = int(_/scan_shape[1])
-                i2 = int(_%scan_shape[1])
-                qphi[i1,i2,:]   = res[_][0]
             name = obj._data_name[0].split('.')[0]
             if save:
                 save_qphi_as_h5(obj,save_path,name,
                     q    = q,
                     azi  = azi,
-                    qphi = qphi,
+                    res = res,
                     path_idx = path_idx,
                     pttn_idx = pttn_idx,
-                    h5_path_list = h5_list)
+                    h5_path_list = h5_list,
+                    total_pttn_num = total_pttns,
+                    single_h5_pttn_num = obj.single_h5_shape[0])
+            print(time.time()-tm)
             #break
         except Exception as e:
             print(e)
