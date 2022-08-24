@@ -6,7 +6,7 @@ import sys
 import matplotlib.pyplot as plt
 import glob
 
-sys.path.append('/data/id13/inhouse12/jiliang/code_v3/xs_proc')
+#sys.path.append('/data/id13/inhouse12/jiliang/code_v3/xs_proc')
 from visual_func import *
 from xs_data_proc import *
 from proc_data_ana import *

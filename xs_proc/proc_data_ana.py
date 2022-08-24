@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import h5py
 import fabio
-
+import os
 
 def load_proc(fn,proc_type="integrate2d"):
     # load the data from proc hdf, specific formate for JL analysis
@@ -30,7 +30,16 @@ def load_proc_dataset(fn,kw,proc_type="integrate2d"):
         if kw == 'origin_h5_path':
             return fc.attrs['origin_h5_path'][:]
         elif kw == 'proc_h5_list':
-            return fc.attrs['proc_h5_list'][:]
+            proc_h5_list_old = fc.attrs['proc_h5_list'][:]
+            proc_h5_list = []
+            current_path = os.path.split(fn)[0]
+            for _ in range(len(proc_h5_list_old)):
+                if _ == 0:
+                     folder_name = os.path.split(
+                                    os.path.split(proc_h5_list_old[_])[0])[-1]
+                proc_h5_list.append(os.path.join(current_path,folder_name,
+                                    os.path.split(proc_h5_list_old[_])[-1]))
+            return proc_h5_list
         else:
             return np.array(fc[kw])
     

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../../xs_proc')
+#sys.path.append('../../xs_proc')
 from xs_data_proc import *
 from proc_data_ana import *
 import matplotlib.pyplot as plt
