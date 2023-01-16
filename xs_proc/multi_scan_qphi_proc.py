@@ -22,10 +22,13 @@ def jl_pyFAI_setup(obj,
     # obj is the "id13_h5_search object includes id13 h5 data info
     if isinstance(save_path,type(None)):
         save_path = os.getcwd()
-    if np.sign(obj.ndetx) <= 0:
-        det_n = 'm{}'.format(int(np.abs(obj.ndetx)))
-    else:
-        det_n = 'p{}'.format(int(np.abs(obj.ndetx)))
+    try:
+        if np.sign(obj.ndetx) <= 0:
+            det_n = 'm{}'.format(int(np.abs(obj.ndetx)))
+        else:
+            det_n = 'p{}'.format(int(np.abs(obj.ndetx)))
+    except:
+        pass
 
     if isinstance(mask,type(None)):
         if os.path.isfile('{}/msk_file/ndet_{}.npz'.format(save_path,det_n)):
@@ -126,6 +129,7 @@ def auto_proc_qphi(obj,
               a_npts  = 120,
               save    = True,
               data_path = 'entry_0000/measurement/data',
+              radial_range = None,
               **kwargs
               ):
     failed_pattern = []
@@ -138,6 +142,18 @@ def auto_proc_qphi(obj,
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
             ai = pyFAI.load(poni_file)    
             tm = time.time()
+            
+            if not isinstance(obj.ct34, type(None)):
+                ct34 = np.copy(obj.ct34)
+                cur_pos = np.argwhere(ct34<(np.nanmean(ct34)*0.6)) 
+                ct34[cur_pos] = ct34[cur_pos-1]
+                if np.nanmean(ct34) <= 0:
+                    ct34 = np.ones((len(pttn_idx.flatten()),))
+                else:
+                    ct34 /= np.nanmean(ct34)
+            else:
+                ct34 = np.ones((len(pttn_idx.flatten()),))
+            
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
                            np.arange(len(path_idx.flatten())),
@@ -149,6 +165,8 @@ def auto_proc_qphi(obj,
                            mask      = mask_file,
                            q_npts    = q_npts,
                            a_npts    = a_npts,
+                           ct        = ct34,
+                           radial_range = radial_range,
                            **kwargs
                            )
             print(time.time()-tm)

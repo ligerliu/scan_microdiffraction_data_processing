@@ -66,7 +66,7 @@ class input_window(QMainWindow):
         self.path_input.textEdited.connect(self.path_set)
 
         prop_id = QWidget(self) 
-        prop_id.setGeometry(20,90,180,20)
+        prop_id.setGeometry(20,90,180,60)
         id_name = QLabel('proposal',prop_id)
         #self.id_input   = QLineEdit('',prop_id)
         self.id_input   = QLineEdit('ihsc1698',prop_id)
@@ -74,9 +74,12 @@ class input_window(QMainWindow):
         self.proposal_id = self.id_input.text()
         self.id_input.move(60,0)
         self.id_input.textEdited.connect(self.id_set)
+        
+        self.old_proposal=QCheckBox('old proposal',prop_id)
+        self.old_proposal.move(60,30)
 
         h5_data_path = QWidget(self) 
-        h5_data_path.setGeometry(20,120,180,20)
+        h5_data_path.setGeometry(20,150,180,20)
         h5_data_name = QLabel('data path',h5_data_path)
         self.h5_data_path_input   = QLineEdit(self.data_path,h5_data_path)
         self.data_h5path = self.h5_data_path_input.text()
@@ -146,7 +149,10 @@ class input_window(QMainWindow):
         try:
             path = QFileDialog.getExistingDirectory()
             self.path_input.setText(path)
-            proposal_id = path.split('/')[-2]
+            if self.old_proposal.isChecked():
+                proposal_id = path.split('/')[-2]
+            else:
+                proposal_id = path.split('/')[-3]
             self.id_input.setText(proposal_id)
             self.path_set()
             self.id_set()

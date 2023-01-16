@@ -219,6 +219,7 @@ def scan_calculate_Iqphi(num,
                          q_npts=300,
                          a_npts=180,
                          q_unit="q_A^-1",
+                         ct    = None,
                          **kwargs):
     if isinstance(method,type(None)):
         method = 'csr'
@@ -228,7 +229,11 @@ def scan_calculate_Iqphi(num,
     pttn_num = pttn_idx[num]
     
     with h5py.File(h5_path,"r") as f:
-        data = f[data_path][pttn_num]
+        data = f[data_path][pttn_num].astype(float)
+        if isinstance(ct,type(None)):
+            pass
+        else:
+            data /= ct[num]
         qphi,q,a = pyfai_obj.integrate2d(
                                     data,
                                     npt_rad  = q_npts,
@@ -245,11 +250,16 @@ def scan_calculate_Iq(num,
                  data_path = None,
                  pyfai_obj = None,
                  q_npts    = 300 ,
+                 ct        = None,
                  **kwargs):
     h5_path  = h5_list[path_idx[num]]
     pttn_num = pttn_idx[num]
     with h5py.File(h5_path,"r") as f:
-        data = f[data_path][pttn_num]
+        data = f[data_path][pttn_num].astype(float)
+        if isinstance(ct,type(None)):
+            pass
+        else:
+            data /= ct[num]
         q,I  = pyfai_obj.integrate1d(data,
                                     q_npts,
                                     **kwargs)

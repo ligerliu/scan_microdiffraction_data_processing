@@ -70,10 +70,14 @@ class Iq_calculate(QWidget):
         #data_path_label.setGeometry(10,70,60,20)
         #self.data_path_input = QLineEdit("entry_0000/measurement/data",Iq_shape)
         #self.data_path_input.setGeometry(80,70,120,20)
-        
+
+        save_path_load = QPushButton('save path load',Iq_shape)
+        save_path_load.setGeometry(10,70,120,20)
+        save_path_load.clicked.connect(self.load_path)
+                
         save_path_label = QLabel("save_path:",Iq_shape)
         save_path_label.setGeometry(10,100,60,20)
-        self.save_path_input = QLineEdit("/data/id13/inhouse12/jiliang/code_v6/example/ihsc1698/",Iq_shape)
+        self.save_path_input = QLineEdit("",Iq_shape)
         self.save_path_input.setGeometry(80,100,120,20)
         
         process_button = QPushButton("process",self)
@@ -92,6 +96,14 @@ class Iq_calculate(QWidget):
         self.add_map_box.move(20,510)
         self.map_id = 0
         
+    
+    def load_path(self):
+        try:
+            path = QFileDialog.getExistingDirectory()
+            self.save_path_input.setText(path)
+        except:
+            pass
+        
     def load_Iq(self):
         try:
             self.Iq_h5,_ = QFileDialog.getOpenFileName(self,"load Iq","","")
@@ -106,9 +118,9 @@ class Iq_calculate(QWidget):
         Iq_show = Plot2D(self)#PlotWindow(self)#,position=True)
         Iq_show.setGeometry(240,20,640,480)
         data = np.copy(self.Iq)
-        data = data.reshape((self.Iq.shape[0]*self.Iq.shape[1],
-                             self.Iq.shape[2]))
-
+        #print(data.shape)
+        #data = data.reshape((self.Iq.shape[0]*self.Iq.shape[1],
+        #                     self.Iq.shape[2]))
         if self.add_map_box.isChecked():
             self.img = np.vstack((data,self.img))
         else:
@@ -169,6 +181,17 @@ class Iq_calculate(QWidget):
             self.data_path = self.obj.data_h5path#str(self.data_path_input.text())
             num_core = int(self.core_num.text())
             
+            if not isinstance(self.obj.ct34,type(None)):
+                self.ct34 = np.copy(self.obj.ct34)
+                cur_pos   = np.argwhere(self.ct34<(np.nanmean(self.ct34)*0.6))
+                self.ct34[cur_pos] = self.ct34[cur_pos-1]
+                if np.nanmean(self.ct34) <= 0:
+                    self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
+                else:
+                    self.ct34 /= np.nanmean(self.ct34)
+            else:
+                    self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
+            
             res = parallel_func(scan_calculate_Iq,
                            num_core,
                            np.arange(len(self.path_idx.flatten())),
@@ -179,6 +202,7 @@ class Iq_calculate(QWidget):
                            pyfai_obj = self.ai,
                            mask      = self.mask,
                            q_npts    = self.q_npts,
+                           ct        = self.ct34,
                            **kwargs
                            )
             q    = res[0][0]

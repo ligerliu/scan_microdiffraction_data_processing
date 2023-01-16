@@ -99,6 +99,11 @@ class roi_sum(QWidget):
         self.pttn_vmax_input = QLineEdit('0.3',pttn_vmax_input_ui)
         self.pttn_vmax_input.setGeometry(100,0,80,20) 
         
+        self.pttn_log_box = QCheckBox('pttn log',self)
+        self.pttn_log_box.move(20,360)
+        
+        self.pttn_zoom_box = QCheckBox('pttn zoom',self)
+        self.pttn_zoom_box.move(20,390)
         self.show()
          
     def load_bkgd(self):
@@ -162,6 +167,7 @@ class roi_sum(QWidget):
             ('Y',
             lambda x,y: int(np.round(y)))])
             toolBar.addWidget(position)
+            self.roi_show.setYAxisInverted(flag=True)
 
             self.position = PositionInfo(plot=self.roi_show)
             self.roi_show.sigPlotSignal.connect(self.roi_map_clicked)
@@ -188,6 +194,12 @@ class roi_sum(QWidget):
                 xPixel,yPixel = position.x(),position.y()
                 dataPos = self.roi_show.pixelToData(xPixel,yPixel,check=True)
                 col,row = (int(dataPos[0]),int(dataPos[1]))
+                print('\n pttn position: x-{}, y-{}'.format(col,row))
+                if self.pttn_zoom_box.isChecked():
+                    reset = False
+                else:
+                    reset = True
+                 
                 with h5py.File(self.h5_list[self.path_idx[row,col]],'r') as f:
                     data = np.copy(f['entry_0000/measurement/data'][self.pttn_idx[row,col]])
                     data = data.astype(np.int)
@@ -199,8 +211,11 @@ class roi_sum(QWidget):
                     #data = data.astype(np.uint32)
                     vmin = float(self.pttn_vmin_input.text())
                     vmax = float(self.pttn_vmax_input.text())
-                    colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
-                    self.subwindow1.addImage(data,colormap=colormap)
+                    if self.pttn_log_box.isChecked():
+                        colormap = setup_colormap(data,vmin=vmin,vmax=vmax,normalization='log')
+                    else:
+                        colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
+                    self.subwindow1.addImage(data,colormap=colormap,resetzoom=reset)
                     self.subwindow1.setYAxisInverted(flag=True)
                     self.subwindow1.setKeepDataAspectRatio(True)                      
             except Exception as e:
@@ -215,7 +230,7 @@ class roi_sum(QWidget):
             self.vertex = []
             if event['event'] == 'drawingFinished':
                 coord = np.array(event['points'])
-                coord = coord.astype(int)
+                coord = np.round(coord).astype(int)
                 self.vertex.append(coord)
                 self.mask_roi = mask_making(mask,self.vertex)
         except Exception as e:
@@ -252,7 +267,11 @@ class roi_sum(QWidget):
                 self.pttn_roi_sum_window = Plot2D()
             vmin = float(self.pttn_vmin_input.text())
             vmax = float(self.pttn_vmax_input.text())
-            colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
+            #colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
+            if self.pttn_log_box.isChecked():
+                colormap = setup_colormap(sum_pttn,vmin=vmin,vmax=vmax,normalization='log')
+            else:
+                colormap = setup_colormap(sum_pttn,vmin=vmin,vmax=vmax)
             self.pttn_roi_sum_window.addImage(sum_pttn,colormap=colormap)
             self.pttn_roi_sum_window.setYAxisInverted(flag=True)
             self.pttn_roi_sum_window.setKeepDataAspectRatio(True)                      

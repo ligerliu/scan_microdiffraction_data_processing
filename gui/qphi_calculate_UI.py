@@ -82,6 +82,10 @@ class qphi_calculate(QWidget):
         #data_path_label.setGeometry(10,100,60,20)
         #self.data_path_input = QLineEdit("entry_0000/measurement/data",qphi_shape)
         #self.data_path_input.setGeometry(80,100,120,20)
+
+        save_path_load = QPushButton('save path load',qphi_shape)
+        save_path_load.setGeometry(10,100,120,20)
+        save_path_load.clicked.connect(self.load_path)
         
         save_path_label = QLabel("save_path:",qphi_shape)
         save_path_label.setGeometry(10,130,60,20)
@@ -92,7 +96,14 @@ class qphi_calculate(QWidget):
         process_button.setGeometry(20,450,60,20)
         process_button.clicked.connect(self.qphi_cal)
         
-    
+   
+    def load_path(self):
+        try:
+            path = QFileDialog.getExistingDirectory()
+            self.save_path_input.setText(path)
+        except:
+            pass
+
     def load_mask_window(self):
         try:
             self.mask_file,_ = QFileDialog.getOpenFileName(self,"load mask","","")
@@ -127,6 +138,18 @@ class qphi_calculate(QWidget):
             self.data_path = self.obj.data_h5path#str(self.data_path_input.text())
             num_core = int(self.core_num.text())
             
+            if not isinstance(self.obj.ct34,type(None)):
+                self.ct34 = np.copy(self.obj.ct34)
+                cor_pos = np.argwhere(self.ct34<(np.nanmean(self.ct34)*0.6))
+                self.ct34[cor_pos] = self.ct34[cor_pos-1]
+                if np.nanmean(self.ct34) <= 0:
+                    self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
+                else:    
+                    self.ct34 /= np.nanmean(self.ct34)
+            else:
+                self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
+            
+            #print(self.ct34,self.obj.ct34)             
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
                            np.arange(len(self.path_idx.flatten())),
@@ -138,6 +161,7 @@ class qphi_calculate(QWidget):
                            mask      = self.mask,
                            q_npts    = self.q_npts,
                            a_npts    = self.a_npts,
+                           ct        = self.ct34,
                            **kwargs
                            )
             q    = res[0][1]

@@ -37,7 +37,8 @@ def auto_load_xrf(obj,
               #save    = False,
               output  = True,
               element    = None,
-              energy_roi = (0,-1),
+              energy_roi = (0,40),
+              energy_calibration = 5e-3,
               **kwargs
              ):
     '''
@@ -87,12 +88,14 @@ def auto_load_xrf(obj,
     with h5py.File(obj.fn,'r') as f:
         if ('xmap3_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m = np.array(f[obj._data_name[nn]]['measurement']['xmap3_det0'])
+            energy = np.arange(XRF_m.shape[1])*energy_calibration
             XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
-            XRF_roi = np.nanmean(XRF_m[:,:,energy_roi[0]:energy_roi[1]],axis=-1)
+            XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
         elif ('xmap2_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m =  np.array(f[obj._data_name[nn]]['measurement']['xmap2_det0'])
+            energy = np.arange(XRF_m.shape[1])*energy_calibration
             XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
-            XRF_roi = np.nanmean(XRF_m[:,:,energy_roi[0]:energy_roi[1]],axis=-1)
+            XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
         else:
             print('xmap3 and xmap2 are not define in the measurement,/n please ensure xmap is included')
             return 
@@ -117,7 +120,7 @@ def auto_load_xrf(obj,
         
     if output == True:
         #print(XRF_m.shape,XRF_m[:,:,1305],XRF_m[:,:,100],energy_roi)
-        return XRF_roi#XRF_m,XRF_roi,XRF_e,h5_path_list,path_idx,pttn_idx
+        return XRF_roi,energy#XRF_m,XRF_roi,XRF_e,h5_path_list,path_idx,pttn_idx
     
             
             

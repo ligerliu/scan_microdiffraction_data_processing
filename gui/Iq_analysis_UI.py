@@ -140,6 +140,7 @@ class Iq_analysis(QWidget):
             roi_map.setGeometry(220,20,680,640)
             colormap = setup_colormap(roi)
             self.Iq_roi_map.addImage(roi,colormap=colormap,replace=True)
+            self.Iq_roi_map.setYAxisInverted(flag=True)
             toolBar = qt.QToolBar()
             self.Iq_roi_map.addToolBar(
             qt.Qt.BottomToolBarArea,
@@ -195,7 +196,7 @@ class Iq_analysis(QWidget):
     
     def roi_map_polygon(self,event):          
         try:
-            self.mask_roi = self.Iq_roi_map.getSelectionMask()         
+            #self.mask_roi = self.Iq_roi_map.getSelectionMask()         
             self.vertex = []
             mask = (self.roi*0+1).astype(bool)
             if event['event'] == 'drawingFinished':
@@ -255,6 +256,8 @@ class Iq_analysis(QWidget):
             dataPos = self.Iq_roi_map.pixelToData(xPixel,yPixel,check=True)
             try:
                 col,row = (int(dataPos[0]),int(dataPos[1]))
+                print('\n pttn position: x-{}, y-{}'.format(col,row))
+                
                 if self.bkgd_sub_box.isChecked():
                     if isinstance(self.bkgd,type(None)):
                         #data = np.copy(self.qphi[row,col])

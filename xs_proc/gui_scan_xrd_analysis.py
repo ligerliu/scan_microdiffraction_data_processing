@@ -574,10 +574,6 @@ def single_proc_h5_roi_sum_paral(num,fn,q,a,
                               low_thrd=0,high_thrd=np.inf,
                               mask=None,bkgd=None,
                               ):
-    if not isinstance(mask,type(None)):
-        qphi[mask] = np.nan
-    if not isinstance(bkgd,type(None)):
-        qphi -= bkgd
     if isinstance(amin,type(None)):
         aid1 = 0
     else:
@@ -645,6 +641,10 @@ def qphi_roi_sum_2dmap(fn,qmin,qmax,amin,amax,
     for _ in res:
         I = np.append(I,_)
     I = I.flatten()
+    if np.size(I) == (scan_size[0]*scan_size[1]):
+        pass
+    else:
+        I = np.append(I,np.zeros((int(scan_size[0]*scan_size[1]-np.size(I)),)))
     qphi_roi_map = I.reshape(scan_size[0],scan_size[1])
     return qphi_roi_map
 
@@ -671,10 +671,17 @@ def Iq_serries_2dmap(fn,num_cores=12,
                         np.arange(len(proc_h5_list)),
                         fn=fn,
                         )
-    I = []
-    for _ in res:
-        I.append(_)
-    I = np.array(I)
+    #I = np.array([])
+    for _ in range(len(res)):
+        #print(type(_),len(_))
+        vec = res[_]
+        #print(vec.shape)
+        if _ == 0:
+            I = np.copy(vec)
+        else:
+            I = np.vstack((I,vec))
+        #I = np.append((I,_))
+    #I = np.array(I)
     return I
 
 def single_proc_h5_Iq_roi_sum_paral(num,fn,q,qmin,qmax,
@@ -735,5 +742,9 @@ def Iq_roi_map_2dmap(fn,q,qmin,qmax,
         I = np.append(I,np.array(_))
     #I = np.array(I)
     I = I.flatten()
+    if np.size(I) == (scan_size[0]*scan_size[1]):
+        pass
+    else:
+        I = np.append(I,np.zeros((int(scan_size[0]*scan_size[1]-np.size(I)),)))
     Iq_roi_map = I.reshape(scan_size[0],scan_size[1])
     return Iq_roi_map

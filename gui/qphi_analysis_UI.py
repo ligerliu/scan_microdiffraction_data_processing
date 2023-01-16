@@ -59,7 +59,7 @@ class qphi_analysis(QWidget):
         self.fileInputWin.textEdited.connect(self.line_edit_input)
         
         roi_setup    = QWidget(self)
-        roi_setup.setGeometry(10,120,180,320)
+        roi_setup.setGeometry(10,120,180,420)
         qmin_label = QLabel('qmin',roi_setup)
         qmin_label.setGeometry(10,10,60,20)
         self.qmin = QLineEdit('',roi_setup)
@@ -106,6 +106,26 @@ class qphi_analysis(QWidget):
         self.bkgd_sub_box = QCheckBox('bkgd subtract',roi_setup)
         self.bkgd_sub_box.move(10,250)
         
+        pttn_vmin_input_ui = QWidget(roi_setup)
+        pttn_vmin_input_ui.setGeometry(20,310,200,20)
+        pttn_vmin_label = QLabel('pttn_vmin',pttn_vmin_input_ui)
+        pttn_vmin_label.setGeometry(0,0,80,20)
+        self.pttn_vmin_input = QLineEdit('0',pttn_vmin_input_ui)
+        self.pttn_vmin_input.setGeometry(100,0,80,20)
+        
+        pttn_vmax_input_ui = QWidget(roi_setup)
+        pttn_vmax_input_ui.setGeometry(20,330,200,20)
+        pttn_vmax_label = QLabel('pttn_vmax',pttn_vmax_input_ui)
+        pttn_vmax_label.setGeometry(0,0,80,20)
+        self.pttn_vmax_input = QLineEdit('1',pttn_vmax_input_ui)
+        self.pttn_vmax_input.setGeometry(100,0,80,20) 
+        
+        self.pttn_log_box = QCheckBox('pttn log',roi_setup)
+        self.pttn_log_box.move(10,360)
+        
+        self.pttn_zoom_box = QCheckBox('pttn zoom',roi_setup)
+        self.pttn_zoom_box.move(10,390)
+        
         self.ori_map_bttn = QPushButton('ori map',roi_setup)
         self.ori_map_bttn.move(10,280)
         self.ori_map_bttn.clicked.connect(self.ori_map_cal)
@@ -118,6 +138,7 @@ class qphi_analysis(QWidget):
             qmax = float(self.qmax.text())
             low_thrd = float(self.low_int_thrhd_line.text())
             high_thrd = float(self.high_int_thrhd_line.text())
+            t = time()
             if self.bkgd_sub_box.isChecked():
                 ori_mat,wid_mat = ori_determ2d_para(
                                 self.fn,self.a,self.q,qmin,qmax,
@@ -127,6 +148,7 @@ class qphi_analysis(QWidget):
                 ori_mat,wid_mat = ori_determ2d_para(
                                 self.fn,self.a,self.q,qmin,qmax,
                                 ll_thrhd = low_thrd, hl_thrhd = high_thrd)
+            print('\n process took: {}'.format(time()-t))
             ori_mat[ori_mat<0] = 180 + ori_mat[ori_mat<0]
             ori_mat[ori_mat>90] = 180 - ori_mat[ori_mat>90]
             self.ori_map_widget = QWidget()
@@ -135,13 +157,17 @@ class qphi_analysis(QWidget):
             ori_map.setGeometry(0,10,640,480)
             colormap={'name':'jet','normalization':'linear',
                       'autoscale':False,'vmin':0,'vamx':90}
+            #colormap = setup_colormap(wid_mat)
             ori_map.addImage(ori_mat,legend='ori_map',colormap=colormap)
             #ori_map.setDefaultColormap(colormap)
-            
+            ori_map.setYAxisInverted(flag=True)
+                        
             wid_map = Plot2D(self.ori_map_widget)
             wid_map.setGeometry(660,10,640,480)
-            colormap = setup_colormap(wid_mat)
-            wid_map.addImage(wid_mat,legend='wid_map',colormap=colormap)
+            colormap = setup_colormap(1/wid_mat)
+            wid_map.addImage(1/wid_mat,legend='wid_map',colormap=colormap)
+            wid_map.setYAxisInverted(flag=True)
+            
             self.ori_map_widget.show()
         except Exception as e:
             print(e)
@@ -183,12 +209,13 @@ class qphi_analysis(QWidget):
                            qmin=qmin,qmax=qmax,amin=amin,amax=amax,
                            low_thrd=low_thrd,high_thrd=high_thrd) 
             self.roi = np.copy(roi)
-            
+             
             roi_map = QWidget(self)
             self.qphi_roi_map = PlotWindow(roi_map)#,position=True)
             roi_map.setGeometry(220,20,680,640)
             colormap = setup_colormap(roi)
             self.qphi_roi_map.addImage(roi,colormap=colormap,replace=True)
+            self.qphi_roi_map.setYAxisInverted(flag=True)
             toolBar = qt.QToolBar()
             self.qphi_roi_map.addToolBar(
             qt.Qt.BottomToolBarArea,
@@ -247,7 +274,8 @@ class qphi_analysis(QWidget):
     
     def roi_map_polygon(self,event):          
         try:
-            self.mask_roi = self.qphi_roi_map.getSelectionMask()         
+            #this will select all selected mask, need to select most recent
+            #self.mask_roi = self.qphi_roi_map.getSelectionMask()         
             self.vertex = []
             mask = (self.roi*0+1).astype(bool)
             if event['event'] == 'drawingFinished':
@@ -256,7 +284,7 @@ class qphi_analysis(QWidget):
                 coord = np.array(event['points'])
                 coord = coord.astype(np.int)
                 self.vertex.append(coord)
-                #print(vertex)
+                #print(self.vertex)
                 self.mask_roi = mask_making(mask,self.vertex)
         except Exception as e:
                 print(e)
@@ -284,10 +312,25 @@ class qphi_analysis(QWidget):
             if self.bkgd_sub_box.isChecked():
                 #print(qphi_ave.dtype,self.bkgd.dtype)
                 qphi_ave = qphi_ave - self.bkgd.astype(np.float)
-            colormap = setup_colormap(qphi_ave)
+            vmin = float(self.pttn_vmin_input.text())
+            vmax = float(self.pttn_vmax_input.text())
+            #colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
+            if self.pttn_log_box.isChecked():
+                colormap = setup_colormap(qphi_ave,vmin=vmin,vmax=vmax,normalization='log')
+            else:
+                colormap = setup_colormap(qphi_ave,vmin=vmin,vmax=vmax)
+
+            #colormap = setup_colormap(qphi_ave)
+            # need out xAxis and yAxis info this simple way doesn't work
+            #if self.pttn_zoom_box.isChecked():
+            #    click_reset = False
+            #else:
+            #    click_reset = True
             self.ave_window.addImage(qphi_ave,
                 colormap=colormap,
                 origin=(0,-180),
+                replace=True,
+                #resetzoom=False,
                 scale=((self.q[-1]-self.q[0])/len(self.q),
                        (self.a[-1]-self.a[0])/len(self.a))
                 )
@@ -299,17 +342,21 @@ class qphi_analysis(QWidget):
         widget = self.qphi_roi_map.getWidgetHandle()
         if event['event'] == 'mouseClicked':
             if isinstance(self.subwindow,type(None)):
-                self.subwindow = QWidget()
-                self.subwindow.setGeometry(1260,620,900,760)
+                #self.subwindow = QWidget()
+                #self.subwindow.setGeometry(1260,620,900,760)
                 #self.subwindow2 = PlotWindow(self.subwindow,position=True) 
-                self.subwindow2 = ImageView(self.subwindow)
-                self.subwindow2.move(5,5)
+                #self.subwindow2 = ImageView(self.subwindow)
+                #self.subwindow.setGeometry(1260,620,680,660)
+                self.subwindow = Plot2D(self.subwindow)
+                self.subwindow.move(5,5)
             self.subwindow.show()
             position = widget.mapFromGlobal(qt.QCursor.pos())
             xPixel,yPixel = position.x(),position.y()
             dataPos = self.qphi_roi_map.pixelToData(xPixel,yPixel,check=True)
             try:
                 col,row = (int(dataPos[0]),int(dataPos[1]))
+                print('\n pttn position: x-{} y-{}'.format(col,row))
+                
                 if self.bkgd_sub_box.isChecked():
                     if isinstance(self.bkgd,type(None)):
                         data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
@@ -321,24 +368,37 @@ class qphi_analysis(QWidget):
                     data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
                 data[np.isnan(data)] = 0
                 data[np.isinf(data)] = 0
-                colormap = setup_colormap(data)
-                self.subwindow2.setImage(data,
+                vmin = float(self.pttn_vmin_input.text())
+                vmax = float(self.pttn_vmax_input.text())
+                if self.pttn_log_box.isChecked():
+                    colormap = setup_colormap(data,vmin=vmin,vmax=vmax,normalization='log')
+                else:
+                    colormap = setup_colormap(data,vmin=vmin,vmax=vmax)
+    
+                #colormap = setup_colormap(data)
+                if self.pttn_zoom_box.isChecked():
+                    click_reset = False
+                else:
+                    click_reset = True
+                self.subwindow.addImage(data,
                 origin=(0,-180),
                 scale=((self.q[-1]-self.q[0])/len(self.q),
-                       (self.a[-1]-self.a[0])/len(self.a))
+                       (self.a[-1]-self.a[0])/len(self.a)),
+                colormap = colormap,
+                resetzoom=click_reset,
                 )
-                self.subwindow2.setColormap(colormap)
-                self.subwindow2.setYAxisInverted(flag=True)
+                #self.subwindow2.setColormap(colormap)
+                self.subwindow.setYAxisInverted(flag=True)
                 
-                toolBar = qt.QToolBar()
-                self.subwindow2.addToolBar(
-                qt.Qt.BottomToolBarArea,
-                toolBar)
-                position = PositionInfo(plot= \
-                self.subwindow2,
-                converters=[('X', lambda x,y: x),
-                ('Y', lambda x,y: y)])
-                toolBar.addWidget(position)
+                #toolBar = qt.QToolBar()
+                #self.subwindow.addToolBar(
+                #qt.Qt.BottomToolBarArea,
+                #toolBar)
+                #position = PositionInfo(plot= \
+                #self.subwindow,
+                #converters=[('X', lambda x,y: x),
+                #('Y', lambda x,y: y)])
+                #toolBar.addWidget(position)
             except Exception as e:
                 print(e)
         else:
