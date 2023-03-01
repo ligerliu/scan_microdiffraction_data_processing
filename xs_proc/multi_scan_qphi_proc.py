@@ -84,7 +84,15 @@ def save_qphi_as_h5(obj,save_path,name,
         fc.create_dataset("beam_intensity",data=obj.ct34)
         fc.create_dataset("q",data=q)
         fc.create_dataset("angle",data=azi)
-        fc.attrs["origin_h5_path"]=h5_path_list
+        #fc.attrs["origin_h5_path"]=h5_path_list
+        try:
+            fc.attrs["origin_h5_path"]=h5_list
+        except:
+            h5_list_idx = int(len(h5_list)/3)
+            fc.attrs["origin_h5_path_1"]=h5_list[:h5_list_idx]
+            fc.attrs["origin_h5_path_2"]=h5_list[h5_list_idx:int(2*h5_list_idx)]
+            fc.attrs["origin_h5_path_3"]=h5_list[int(2*h5_list_idx):]
+
         fc.create_dataset("path_idx",data=path_idx)
         fc.create_dataset("pttn_idx",data=pttn_idx)
         #fc.create_dataset("detector_distance",data=obj.ndetx)
@@ -101,7 +109,7 @@ def save_qphi_as_h5(obj,save_path,name,
         #            idx_list=idx_list,res=res)
         #for _ in name_res:
         #    proc_h5_name_list.append(_)
-        for _ in range(len(h5_path_list)):
+        for _ in range(len(h5_list)):
             proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
             proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
             proc_h5_name_list.append(proc_h5_name)
@@ -116,7 +124,14 @@ def save_qphi_as_h5(obj,save_path,name,
                                         data = np.array(qphi_data),
                                         compression="gzip",
                                         compression_opts=9)
-        fc.attrs["proc_h5_list"] = proc_h5_name_list
+        #fc.attrs["proc_h5_list"] = proc_h5_name_list
+        try:
+            fc.attrs['proc_h5_list'] = proc_h5_name_list
+        except:
+            fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
+            fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
+            fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_listi_idx):]
+
     print('file save finished')
 
 def auto_proc_qphi(obj,
@@ -143,6 +158,9 @@ def auto_proc_qphi(obj,
             ai = pyFAI.load(poni_file)    
             tm = time.time()
             
+            single_h5_pttn_num = obj.single_h5_shape[0]
+            total_pttn_num     = total_pttns
+             
             if not isinstance(obj.ct34, type(None)):
                 ct34 = np.copy(obj.ct34)
                 cur_pos = np.argwhere(ct34<(np.nanmean(ct34)*0.6)) 
@@ -153,37 +171,74 @@ def auto_proc_qphi(obj,
                     ct34 /= np.nanmean(ct34)
             else:
                 ct34 = np.ones((len(pttn_idx.flatten()),))
-            
+
+            hdf_folder = os.path.join(save_path,"hdf_file")
+            if not os.path.exists(hdf_folder):
+                os.mkdir(hdf_folder)
+                
+            name = obj._data_name[0].split('.')[0]
+            h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
+                
+            qphi0,q,azi = calculate_Iqphi(0,h5_list[0],data_path,ai,
+                            q_npts = q_npts,a_npts = a_npts)
+                
+            with h5py.File(h5_name,'a') as f:
+                if "integrate2d" in list(f):
+                    del f["integrate2d"]
+                f.create_group("integrate2d")
+                fc = f['integrate2d']
+                fc.create_dataset("beam_intensity",data=ct34)
+                fc.create_dataset("q",data=q)
+                fc.create_dataset("angle",data=azi)
+                #fc.attrs["origin_h5_path"]=h5_list
+                try:
+                    fc.attrs["origin_h5_path"]=h5_list
+                except:
+                    h5_list_idx = int(len(self.h5_list)/3)
+                    fc.attrs["origin_h5_path_1"]=h5_list[:h5_list_idx]
+                    fc.attrs["origin_h5_path_2"]=h5_list[h5_list_idx:int(2*h5_list_idx)]
+                    fc.attrs["origin_h5_path_3"]=h5_list[int(2*h5_list_idx):]
+                fc.create_dataset("path_idx",data=path_idx)
+                fc.create_dataset("pttn_idx",data=pttn_idx)
+                #fc.create_dataset("detector_distance",data=obj.ndetx)
+                proc_h5_folder = os.path.join(hdf_folder,name)
+                if not os.path.exists(proc_h5_folder):
+                    os.mkdir(proc_h5_folder)
+                idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
+                proc_h5_name_list = []
+                for _ in range(len(h5_list)):
+                   proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
+                   proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
+                   proc_h5_name_list.append(proc_h5_name)
+                #fc.attrs["proc_h5_list"] = proc_h5_name_list
+                try:
+                    fc.attrs['proc_h5_list'] = proc_h5_name_list
+                except:
+                    fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
+                    fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
+                    fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_listi_idx):]
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
-                           np.arange(len(path_idx.flatten())),
+                           np.arange(len(h5_list)),
                            h5_list   = h5_list,
                            path_idx  = path_idx.flatten(),
                            pttn_idx  = pttn_idx.flatten(),
                            data_path = data_path,
-                           pyfai_obj = ai,
+                           pyfai_obj = ai, 
                            mask      = mask_file,
                            q_npts    = q_npts,
                            a_npts    = a_npts,
                            ct        = ct34,
+                           save      = True,
+                           idx_list  = idx_list,
                            radial_range = radial_range,
+                           single_h5_pttn_num = single_h5_pttn_num,
+                           proc_h5_name_list  = proc_h5_name_list,
                            **kwargs
-                           )
+                           )   
+            print('process finished')
             print(time.time()-tm)
-            q    = res[0][1]
-            azi  = res[0][2]
-            name = obj._data_name[0].split('.')[0]
-            if save:
-                save_qphi_as_h5(obj,save_path,name,
-                    q    = q,
-                    azi  = azi,
-                    res = res,
-                    path_idx = path_idx,
-                    pttn_idx = pttn_idx,
-                    h5_path_list = h5_list,
-                    total_pttn_num = total_pttns,
-                    single_h5_pttn_num = obj.single_h5_shape[0])
-            print(time.time()-tm)
+            
             #break
         except Exception as e:
             print(e)

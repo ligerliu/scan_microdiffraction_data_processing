@@ -232,43 +232,28 @@ def scan_calculate_Iqphi(num,
                          a_npts=180,
                          q_unit="q_A^-1",
                          ct    = None,
-                         save  = False,
-                         idx_list = None,
-                         single_h5_pttn_num = None,
-                         proc_h5_name_list = None,
                          **kwargs):
     if isinstance(method,type(None)):
         method = 'csr'
     else:
         method = method
-    map_qphi = []
-    for i in range(idx_list[num][0],idx_list[num][1]):
-        h5_path  = h5_list[path_idx[i]]
-        pttn_num = pttn_idx[i]
-        #name_list_idx = int(num/single_h5_pttn_num)
-            
-        with h5py.File(h5_path,"r") as f:
-            data = f[data_path][pttn_num].astype(float)
-            if isinstance(ct,type(None)):
-                pass
-            else:
-                data /= ct[i]
-            qphi,q,a = pyfai_obj.integrate2d(
-                                        data,
-                                        npt_rad  = q_npts,
-                                        npt_azim = a_npts,
-                                        unit     = q_unit,
-                                        method   = method,
-                                        **kwargs)
-            map_qphi.append(qphi)
-    with h5py.File(proc_h5_name_list[num],'a') as k:
-        if "integrate2d" in list(k):
-            del k['integrate2d']
-        k.create_group("integrate2d")
-        k["integrate2d"].create_dataset("map_qphi",
-                                data = np.array(map_qphi),
-                                compression="gzip",
-                                compression_opts=9)
+    h5_path  = h5_list[path_idx[num]]
+    pttn_num = pttn_idx[num]
+    
+    with h5py.File(h5_path,"r") as f:
+        data = f[data_path][pttn_num].astype(float)
+        if isinstance(ct,type(None)):
+            pass
+        else:
+            data /= ct[num]
+        qphi,q,a = pyfai_obj.integrate2d(
+                                    data,
+                                    npt_rad  = q_npts,
+                                    npt_azim = a_npts,
+                                    unit     = q_unit,
+                                    method   = method,
+                                    **kwargs)
+    return qphi,q,a
 
 def scan_calculate_Iq(num,
                  h5_list   = None,

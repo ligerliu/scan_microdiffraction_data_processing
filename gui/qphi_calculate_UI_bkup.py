@@ -138,8 +138,6 @@ class qphi_calculate(QWidget):
             self.data_path = self.obj.data_h5path#str(self.data_path_input.text())
             num_core = int(self.core_num.text())
             
-            single_h5_pttn_num = self.obj.single_h5_shape[0]
-            
             if not isinstance(self.obj.ct34,type(None)):
                 self.ct34 = np.copy(self.obj.ct34)
                 cor_pos = np.argwhere(self.ct34<(np.nanmean(self.ct34)*0.6))
@@ -150,57 +148,11 @@ class qphi_calculate(QWidget):
                     self.ct34 /= np.nanmean(self.ct34)
             else:
                 self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
-            save_path = self.save_path_input.text()
-            hdf_folder = os.path.join(save_path,"hdf_file")
-            if not os.path.exists(hdf_folder):
-                os.mkdir(hdf_folder)
-            name = self.obj._data_name[0].split('.')[0]
-            h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
             
-            total_pttn_num     = self.total_pttns
-            qphi0,q,azi = calculate_Iqphi(0,self.h5_list[0],self.data_path,self.ai,
-                            q_npts = self.q_npts,a_npts = self.a_npts)
-
-            with h5py.File(h5_name,'a') as f:
-                #f.H5Pset_attr_pahse = 0
-                if "integrate2d" in list(f):
-                    del f["integrate2d"]
-                f.create_group("integrate2d")
-                fc = f['integrate2d']
-                fc.create_dataset("beam_intensity",data=self.ct34)
-                fc.create_dataset("q",data=q)
-                fc.create_dataset("angle",data=azi)
-                try:
-                    fc.attrs["origin_h5_path"]=self.h5_list
-                except:
-                    #this happend when more than 1.4 million pattern, attr has size limit of 64KB
-                    h5_list_idx = int(len(self.h5_list)/3)
-                    fc.attrs["origin_h5_path_1"]=self.h5_list[:h5_list_idx]
-                    fc.attrs["origin_h5_path_2"]=self.h5_list[h5_list_idx:int(2*h5_list_idx)]
-                    fc.attrs["origin_h5_path_3"]=self.h5_list[int(2*h5_list_idx):]
-                fc.create_dataset("path_idx",data=self.path_idx)
-                fc.create_dataset("pttn_idx",data=self.pttn_idx)
-                #fc.create_dataset("detector_distance",data=obj.ndetx)
-                proc_h5_folder = os.path.join(hdf_folder,name)
-                if not os.path.exists(proc_h5_folder):
-                    os.mkdir(proc_h5_folder)
-                idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
-                proc_h5_name_list = []
-                for _ in range(len(self.h5_list)):
-                   proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
-                   proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
-                   proc_h5_name_list.append(proc_h5_name)
-                try:
-                    fc.attrs['proc_h5_list'] = proc_h5_name_list
-                except:
-                    #this happend when more than 1.4 million pattern, attr has size limit of 64KB
-                    fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
-                    fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
-                    fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_list_idx):]
-
+            #print(self.ct34,self.obj.ct34)             
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
-                           np.arange(len(self.h5_list)),
+                           np.arange(len(self.path_idx.flatten())),
                            h5_list   = self.h5_list,
                            path_idx  = self.path_idx.flatten(),
                            pttn_idx  = self.pttn_idx.flatten(),
@@ -210,15 +162,35 @@ class qphi_calculate(QWidget):
                            q_npts    = self.q_npts,
                            a_npts    = self.a_npts,
                            ct        = self.ct34,
-                           save      = True,
-                           idx_list  = idx_list,
-                           #radial_range = radial_range,
-                           single_h5_pttn_num = single_h5_pttn_num,
-                           proc_h5_name_list = proc_h5_name_list,
                            **kwargs
                            )
-
-            
+            q    = res[0][1]
+            azi  = res[0][2]
+            scan_shape = self.scan_shape
+            #qphi = np.zeros((scan_shape[0],
+            #                 scan_shape[1],
+            #                 res[0][0].shape[0],
+            #                 res[0][0].shape[1]))
+            #for _ in range(len(res)):
+            #    #if len(idx_list) > 1:
+            #    #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
+            #    #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
+            #    #else:
+            #    i1 = int(_/scan_shape[1])
+            #    i2 = int(_%scan_shape[1])
+            #    qphi[i1,i2,:]   = res[_][0]
+            name = self.obj._data_name[0].split('.')[0]
+            save_path =self.save_path_input.text()
+            print(time()-t)
+            save_qphi_as_h5(self.obj,save_path,name,
+                    q    = q,
+                    azi  = azi,
+                    res = res,
+                    path_idx = self.path_idx,
+                    pttn_idx = self.pttn_idx,
+                    total_pttn_num=self.total_pttns,
+                    single_h5_pttn_num = self.obj.single_h5_shape[0],
+                    h5_path_list = self.h5_list)
             print(time()-t)#,'\n\nfuck complete')
         except Exception as e:
             print(e)

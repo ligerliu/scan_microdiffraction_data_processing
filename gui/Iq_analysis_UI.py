@@ -238,11 +238,13 @@ class Iq_analysis(QWidget):
                 self.Iq_old.append(Iq_ave)
                 for i in range(len(self.Iq_old)):
                     self.subwindow.addCurve(self.q,self.Iq_old[i],
-                            legend=f"{i}",xlabel='Q',ylabel='I (a.u.)')
+                            legend=f"{i}",
+                            xlabel=r'$\rm{Q\,\,(\AA^{-1})}',
+                            ylabel=r'$\rm{I\,\,(a.u.)}$')
             else:
                 self.Iq_old = []
                 self.subwindow.addCurve(self.q,Iq_ave,
-                xlabel='Q',ylabel='I (a.u.)')
+                xlabel=r'$\rm{Q\,\,(\AA^{-1})}',ylabel=r'$\rm{I\,\,(a.u.)}$')
             self.subwindow.show()
         except Exception as e:
             print(e)
@@ -285,11 +287,14 @@ class Iq_analysis(QWidget):
                     self.Iq_old.append(data)
                     for i in range(len(self.Iq_old)):
                         self.subwindow.addCurve(self.q,self.Iq_old[i],
-                                legend=f"{i}",xlabel='Q',ylabel='I (a.u.)')
+                                legend=f"{i}",
+                                xlabel=r'$\rm{Q\,\,(\AA^{-1})}',
+                                ylabel=r'$\rm{I\,\,(a.u.)}$')
                 else:
                     self.Iq_old = []
                     self.subwindow.addCurve(self.q,data,legend='0',
-                                xlabel='Q',ylabel='I (a.u.)')
+                                xlabel=r'$\rm{Q\,\,(\AA^{-1})}',
+                                ylabel=r'$\rm{I\,\,(a.u.)}$')
                 self.subwindow.show()
             except Exception as e:
                 print(e)

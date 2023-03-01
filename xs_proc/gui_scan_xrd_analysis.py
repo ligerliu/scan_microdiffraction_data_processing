@@ -45,11 +45,12 @@ def load_proc_single_Iq(fn,r,c,proc_type="integrate1d"):
         Iq = fc['map_Iq'][pttn_idx[r,c],:]
         return Iq
 
-def load_proc_single_qphi(fn,r,c,proc_type="integrate2d"):
+def load_proc_single_qphi(fn,r,c,proc_h5_list = None,proc_type="integrate2d"):
     # this return the qphi data saved in jiliang's customized "*_proc.h5"
     # fn is the file name of '*_proc.h5' data
     # kw is keyword of h5 dataset or attribute
-    proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
+    if isinstance(proc_h5_list,type(None)):
+        proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
     pttn_idx = load_proc_dataset(fn,'pttn_idx')
     path_idx = load_proc_dataset(fn,'path_idx')
     with h5py.File(proc_h5_list[path_idx[r,c]],'r') as f:
@@ -59,7 +60,7 @@ def load_proc_single_qphi(fn,r,c,proc_type="integrate2d"):
     
 def single_qphi_sum_roi(r,c,fn=None,a=None,q=None,qmin=None,
                         qmax=None,amin=None,amax=None,mask=None,
-                        bkgd=None,vs_axis='q'):
+                        bkgd=None,vs_axis='q',proc_h5_list=None):
     '''
     this returns the average 1D intensity profile of roi for desired 
     q and azimuth range.
@@ -86,7 +87,11 @@ def single_qphi_sum_roi(r,c,fn=None,a=None,q=None,qmin=None,
     coordinate: if vs_axis = 'q', return the q coordinate, else return a coordinate
     intensity_profile: average intensity profile
     '''
-    qphi = np.copy(load_proc_single_qphi(fn,r,c,proc_type="integrate2d"))
+    if isinstance(proc_h5_list,type(None)):
+        qphi = np.copy(load_proc_single_qphi(fn,r,c,proc_type="integrate2d"))
+    else:
+        qphi = np.copy(load_proc_single_qphi(fn,r,c,proc_h5_list=proc_h5_list,
+                       proc_type="integrate2d"))
     if not isinstance(mask,type(None)):
         qphi[mask] = np.nan
     if not isinstance(bkgd,type(None)):
@@ -573,6 +578,7 @@ def single_proc_h5_roi_sum_paral(num,fn,q,a,
                               qmin,qmax,amin,amax,
                               low_thrd=0,high_thrd=np.inf,
                               mask=None,bkgd=None,
+                              proc_h5_list=None,
                               ):
     if isinstance(amin,type(None)):
         aid1 = 0
@@ -600,8 +606,8 @@ def single_proc_h5_roi_sum_paral(num,fn,q,a,
         return
     elif qid1 == qid2:
         qid2 += 1
-    
-    proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
+    if isinstance(proc_h5_list,type(None)):
+        proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
     with h5py.File(proc_h5_list[num],'r') as f:
         qphi = np.copy(f['integrate2d/map_qphi'][:,aid1:aid2,qid1:qid2])
         axis1 = f['integrate2d/map_qphi'].shape[0]
@@ -625,9 +631,10 @@ from multiprocessing import Pool
 def qphi_roi_sum_2dmap(fn,qmin,qmax,amin,amax,
                        q,azi,num_cores=36,
                        low_thrd=0,high_thrd=np.inf,
-                       mask=None,bkgd=None):
+                       mask=None,bkgd=None,proc_h5_list=None):
     scan_size = load_proc_qphi_size(fn)
-    proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
+    if isinstance(proc_h5_list,type(None)):
+        proc_h5_list = load_proc_dataset(fn,'proc_h5_list')
     res = parallel_func(single_proc_h5_roi_sum_paral,
                         num_cores,
                         np.arange(len(proc_h5_list)),
@@ -636,7 +643,7 @@ def qphi_roi_sum_2dmap(fn,qmin,qmax,amin,amax,
                         qmin=qmin,qmax=qmax,
                         amin=amin,amax=amax,
                         low_thrd=low_thrd,high_thrd=high_thrd,
-                        mask=mask,bkgd=bkgd)
+                        mask=mask,bkgd=bkgd,proc_h5_list=proc_h5_list)
     I = np.array([])
     for _ in res:
         I = np.append(I,_)

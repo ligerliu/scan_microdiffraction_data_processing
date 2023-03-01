@@ -45,42 +45,46 @@ def jl_pyFAI_setup(obj,
         poni = poni
     return poni,mask
 
-def save_Iq_as_h5(obj,save_path,name,
+#def save_proc_h5(num,h5_path_list,name,proc_h5_folder,
+#                idx_list,res):
+#       proc_h5_name = "{}_{:05d}_proc.h5".format(name,num)
+#       proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
+#       with h5py.File(proc_h5_name,'a') as k:
+#           if "integrate2d" in list(k):
+#               del k["integrate2d"]
+#           k.create_group("integrate2d")
+#           qphi_data = []
+#           for __ in range(idx_list[num][0],idx_list[num][1]):
+#               qphi_data.append(res[__][0])
+#           k["integrate2d"].create_dataset("map_qphi",
+#                                   data = np.array(qphi_data),
+#                                   compression="gzip",
+#                                   compression_opts=9)
+#       return proc_h5_name
+
+def save_qphi_as_h5(obj,save_path,name,
                     q,
+                    azi,
                     res,
                     path_idx,
                     pttn_idx,
                     h5_path_list,
                     total_pttn_num,
-                    single_h5_pttn_num,
-                    ):
+                    single_h5_pttn_num):
     hdf_folder = os.path.join(save_path,"hdf_file")
     if not os.path.exists(hdf_folder):
         os.mkdir(hdf_folder)
-    
     #print("\nhdf file writinge start time:\n%5.2f sec" %(time.time()-t))
     h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
     with h5py.File(h5_name,'a') as f:
-        if "integrate1d" in list(f):
-            del f["integrate1d"]
-        f.create_group("integrate1d")
-        fc = f['integrate1d']
-        #fc = h5py.File(h5_name,"w")
+        if "integrate2d" in list(f):
+            del f["integrate2d"]
+        f.create_group("integrate2d")
+        fc = f['integrate2d']
         fc.create_dataset("beam_intensity",data=obj.ct34)
         fc.create_dataset("q",data=q)
-        #fc.create_dataset("Iq",
-        #                  data=Iq,compression="gzip",
-        #                  #compression_opts=9
-        #                 )
-        #fc.attrs["origin_h5_path"]=h5_path_list
-        #try:
-        #    fc.attrs["origin_h5_path"]=h5_path_list
-        #except:
-        #    h5_list_idx = int(len(h5_path_list)/3)
-        #    fc.attrs["origin_h5_path_1"]=h5_path_list[:h5_list_idx]
-        #    fc.attrs["origin_h5_path_2"]=h5_path_list[h5_list_idx:int(2*h5_list_idx)]
-        #    fc.attrs["origin_h5_path_3"]=h5_path_list[int(2*h5_list_idx):]
-
+        fc.create_dataset("angle",data=azi)
+        fc.attrs["origin_h5_path"]=h5_path_list
         fc.create_dataset("path_idx",data=path_idx)
         fc.create_dataset("pttn_idx",data=pttn_idx)
         #fc.create_dataset("detector_distance",data=obj.ndetx)
@@ -89,43 +93,42 @@ def save_Iq_as_h5(obj,save_path,name,
             os.mkdir(proc_h5_folder)
         idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
         proc_h5_name_list = []
+        # here it works, but should be parallelized to accelerate
+        #name_res = parallel_func(save_proc_h5,12,
+        #            np.arange(len(h5_path_list)),
+        #            h5_path_list=h5_path_list,name=name,
+        #            proc_h5_folder=proc_h5_folder,
+        #            idx_list=idx_list,res=res)
+        #for _ in name_res:
+        #    proc_h5_name_list.append(_)
         for _ in range(len(h5_path_list)):
             proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
             proc_h5_name = os.path.join(proc_h5_folder,proc_h5_name)
             proc_h5_name_list.append(proc_h5_name)
             with h5py.File(proc_h5_name,'a') as k:
-                if "integrate1d" in list(k):
-                    del k["integrate1d"]
-                k.create_group("integrate1d")
-                Iq_data = []
+                if "integrate2d" in list(k):
+                    del k["integrate2d"]
+                k.create_group("integrate2d")
+                qphi_data = []
                 for __ in range(idx_list[_][0],idx_list[_][1]):
-                    Iq_data.append(res[__][1])
-                k["integrate1d"].create_dataset("map_Iq",
-                                        data = np.array(Iq_data),
+                    qphi_data.append(res[__][0])
+                k["integrate2d"].create_dataset("map_qphi",
+                                        data = np.array(qphi_data),
                                         compression="gzip",
                                         compression_opts=9)
         fc.attrs["proc_h5_list"] = proc_h5_name_list
-        #try:
-        #    fc.attrs['proc_h5_list'] = proc_h5_name_list
-        #except:
-        #    fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
-        #    fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
-        #    fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_list_idx):]
-        
     print('file save finished')
 
-        #fc.close()
-
-def auto_proc_Iq(obj,
+def auto_proc_qphi(obj,
               samples,
               save_path,
               num_core= 8,
               mask    = None,
               poni    = None,
               q_npts  = 200,
+              a_npts  = 120,
               save    = True,
               data_path = 'entry_0000/measurement/data',
-              units   = 'q_A^-1',
               radial_range = None,
               **kwargs
               ):
@@ -134,15 +137,15 @@ def auto_proc_Iq(obj,
         try:
             obj.keyword_search(*samples[ii])
             poni_file,mask_file = jl_pyFAI_setup(obj,poni=poni,
-                                    mask=mask,save_path=save_path)
+                                  mask=mask,save_path=save_path)
             total_pttns,scan_shape,idx_list = scan_info(obj)
             h5_list,path_idx,pttn_idx = scan_h5_data_info(obj,scan_shape,idx_list)
             ai = pyFAI.load(poni_file)    
             tm = time.time()
-
-            if not isinstance(obj.ct34,type(None)):
+            
+            if not isinstance(obj.ct34, type(None)):
                 ct34 = np.copy(obj.ct34)
-                cur_pos = np.argwhere(ct34<(np.nanmean(ct34)*0.6))
+                cur_pos = np.argwhere(ct34<(np.nanmean(ct34)*0.6)) 
                 ct34[cur_pos] = ct34[cur_pos-1]
                 if np.nanmean(ct34) <= 0:
                     ct34 = np.ones((len(pttn_idx.flatten()),))
@@ -150,8 +153,8 @@ def auto_proc_Iq(obj,
                     ct34 /= np.nanmean(ct34)
             else:
                 ct34 = np.ones((len(pttn_idx.flatten()),))
-                        
-            res = parallel_func(scan_calculate_Iq,
+            
+            res = parallel_func(scan_calculate_Iqphi,
                            num_core,
                            np.arange(len(path_idx.flatten())),
                            h5_list   = h5_list,
@@ -161,40 +164,29 @@ def auto_proc_Iq(obj,
                            pyfai_obj = ai,
                            mask      = mask_file,
                            q_npts    = q_npts,
+                           a_npts    = a_npts,
                            ct        = ct34,
                            radial_range = radial_range,
                            **kwargs
                            )
-            #print(time.time()-tm)
-            q    = res[0][0]
-            if units == 'q_A^-1':
-                #pyFAi integrate1d only support q_nm^-1 2theta and rm
-                q /= 10.
-            Iq   = np.zeros((scan_shape[0],
-                             scan_shape[1],
-                             len(res[0][1]),
-                             )) 
-            for _ in range(len(res)):
-                #if len(idx_list) > 1:
-                #    i1 = int((_+i*t1.single_h5_shape[0])/scan_shape[1])
-                #    i2 = int((_+i*t1.single_h5_shape[0])%scan_shape[1])
-                #else:
-                i1 = int(_/scan_shape[1])
-                i2 = int(_%scan_shape[1])
-                #Iq[i1,i2,:]   = res[_][1]
+            print(time.time()-tm)
+            q    = res[0][1]
+            azi  = res[0][2]
             name = obj._data_name[0].split('.')[0]
             if save:
-                save_Iq_as_h5(obj,save_path,name,
+                save_qphi_as_h5(obj,save_path,name,
                     q    = q,
-                    res   = res,
+                    azi  = azi,
+                    res = res,
                     path_idx = path_idx,
                     pttn_idx = pttn_idx,
                     h5_path_list = h5_list,
                     total_pttn_num = total_pttns,
                     single_h5_pttn_num = obj.single_h5_shape[0])
             print(time.time()-tm)
-            #reak
-        except:
+            #break
+        except Exception as e:
+            print(e)
             failed_pattern.append(obj._data_name)
             pass
     print(failed_pattern) 

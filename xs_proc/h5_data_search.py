@@ -19,6 +19,7 @@ class id13_h5_search:
                 proposal      = None,
                 data_h5path   = "entry_0000/measurement/data",
                 file_sys      = "linux",
+                detector      ='eiger',
                 ):
         if proposal_path == None:
             self.proposal_path = os.getcwd()
@@ -35,6 +36,7 @@ class id13_h5_search:
             self.check_path(self.fn,'proposal {}'.format(proposal))
         self.file_sys = file_sys
         self.data_h5path = data_h5path
+        self.detector = detector
     
     def check_path(self,path,name):
         if not os.path.exists(path):
@@ -74,7 +76,7 @@ class id13_h5_search:
                                                 self.sample,
                                                 self.dataset,
                                                 self.scannum,
-                                                "eiger")
+                                                self.detector)
                                     if os.path.isdir(self.data_path):
                                         pass
                                     else:
@@ -86,7 +88,7 @@ class id13_h5_search:
                                                     self.sample,
                                                     self.dataset,
                                                     self.scannum,
-                                                    "eiger")
+                                                    self.detector)
                                     print('\nsample:\n{}'.format(path))
                                     print('\ndataset:\n{}'.format(subpath))
                                     print('\nscan:\n{}'.format(self.scannum))

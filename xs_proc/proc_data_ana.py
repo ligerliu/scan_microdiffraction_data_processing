@@ -29,6 +29,15 @@ def load_proc_dataset(fn,kw,proc_type="integrate2d"):
         fc = f[proc_type]
         if kw == 'origin_h5_path':
             return fc.attrs['origin_h5_path'][:]
+        elif kw == 'origin_h5_path_1':
+            h5_list = []
+            for _ in fc.attrs['origin_h5_path_1'][:]:
+                h5_list.append(_)
+            for _ in fc.attrs['origin_h5_path_2'][:]:
+                h5_list.append(_)
+            for _ in fc.attrs['origin_h5_path_3'][:]:
+                h5_list.append(_)
+            return h5_list
         elif kw == 'proc_h5_list':
             proc_h5_list_old = fc.attrs['proc_h5_list'][:]
             proc_h5_list = []
@@ -40,6 +49,24 @@ def load_proc_dataset(fn,kw,proc_type="integrate2d"):
                 proc_h5_list.append(os.path.join(current_path,folder_name,
                                     os.path.split(proc_h5_list_old[_])[-1]))
             return proc_h5_list
+        elif kw == 'proc_h5_list_1':
+            proc_h5_list_old = []
+            for _ in fc.attrs['proc_h5_list_1'][:]:
+                proc_h5_list_old.append(_)
+            for _ in fc.attrs['proc_h5_list_2'][:]:
+                proc_h5_list_old.append(_)
+            for _ in fc.attrs['proc_h5_list_3'][:]:
+                proc_h5_list_old.append(_)
+            proc_h5_list = []
+            current_path = os.path.split(fn)[0]
+            for _ in range(len(proc_h5_list_old)):
+                if _ == 0:
+                     folder_name = os.path.split(
+                                    os.path.split(proc_h5_list_old[_])[0])[-1]
+                proc_h5_list.append(os.path.join(current_path,folder_name,
+                                    os.path.split(proc_h5_list_old[_])[-1]))
+            return proc_h5_list
+            
         else:
             return np.array(fc[kw])
     

@@ -65,7 +65,8 @@ class XRF_UI(QWidget):
             print(np.max(self.xrf_map))
             self.xrf_roi_show = PlotWindow(self)#,position=True)
             colormap = setup_colormap(self.xrf_map)
-            self.xrf_roi_show.addImage(self.xrf_map,colormap=colormap)
+            self.xrf_roi_show.addImage(self.xrf_map,colormap=colormap,
+                                       xlabel='H',ylabel='V')
             self.xrf_roi_show.setYAxisInverted(flag=True)
 
             toolBar = qt.QToolBar()
@@ -111,8 +112,12 @@ class XRF_UI(QWidget):
                 #print(data,energy)
                 if isinstance(self.subwindow,type(None)):
                     self.subwindow = Plot1D()
+                xlabel = r'$\rm{Energy (KeV)}$'
+                #print(xlabel)
                 self.subwindow.addCurve(self.energy,
-                                        data,xlabel='E (KeV)')
+                                        data,
+                                        xlabel=xlabel,
+                                        ylabel=r'$\rm{I\,\,(a.u.)}$')
                 self.subwindow.show()
             except Exception as e:
                 print(e)

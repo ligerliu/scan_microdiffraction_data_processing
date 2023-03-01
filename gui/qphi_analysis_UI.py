@@ -199,15 +199,18 @@ class qphi_analysis(QWidget):
                 if not isinstance(self.bkgd,type(None)):
                     roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
                            qmin=qmin,qmax=qmax,amin=amin,amax=amax,
-                           low_thrd=low_thrd,high_thrd=high_thrd,bkgd=self.bkgd) 
+                           low_thrd=low_thrd,high_thrd=high_thrd,bkgd=self.bkgd,
+                           proc_h5_list=self.proc_h5_list) 
                 else:
                     roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
                            qmin=qmin,qmax=qmax,amin=amin,amax=amax,
-                           low_thrd=low_thrd,high_thrd=high_thrd) 
+                           low_thrd=low_thrd,high_thrd=high_thrd,
+                           proc_h5_list=self.proc_h5_list) 
             else:
                 roi = qphi_roi_sum_2dmap(self.fn,q=self.q,azi=self.a,
                            qmin=qmin,qmax=qmax,amin=amin,amax=amax,
-                           low_thrd=low_thrd,high_thrd=high_thrd) 
+                           low_thrd=low_thrd,high_thrd=high_thrd,
+                           proc_h5_list=self.proc_h5_list) 
             self.roi = np.copy(roi)
              
             roi_map = QWidget(self)
@@ -247,7 +250,10 @@ class qphi_analysis(QWidget):
             try:
                 self.q = load_proc_dataset(self.fn,'q')
                 self.a = load_proc_dataset(self.fn,'angle')
-                self.proc_h5_list = load_proc_dataset(self.fn,'proc_h5_list')
+                try:
+                    self.proc_h5_list = load_proc_dataset(self.fn,'proc_h5_list')
+                except:
+                    self.proc_h5_list = load_proc_dataset(self.fn,'proc_h5_list_1')
                 self.qmin.setText(str(np.round(np.min(self.q),decimals=4)))
                 self.qmax.setText(str(np.round(np.max(self.q),decimals=4)))
                 self.amin.setText(str(np.round(np.min(self.a),decimals=4)))
@@ -302,7 +308,8 @@ class qphi_analysis(QWidget):
             c = cc[self.mask_roi]
             qphi = []
             for _ in range(len(r)):
-                qphi.append(load_proc_single_qphi(self.fn,r[_],c[_]))
+                qphi.append(load_proc_single_qphi(self.fn,r[_],c[_],
+                                       proc_h5_list=self.proc_h5_list))
             qphi = np.array(qphi)
             qphi[qphi==0] = np.nan
             qphi_ave = np.nanmean(qphi,axis=0).astype(float)
@@ -326,11 +333,16 @@ class qphi_analysis(QWidget):
             #    click_reset = False
             #else:
             #    click_reset = True
+            
+            xlabel = r'$\rm{Q\,\,(\AA^{-1})}$'
+            ylabel = r'$\rm{\phi\,\,(^{o})}$'
             self.ave_window.addImage(qphi_ave,
                 colormap=colormap,
                 origin=(0,-180),
                 replace=True,
                 #resetzoom=False,
+                xlabel = xlabel,
+                ylabel = ylabel,
                 scale=((self.q[-1]-self.q[0])/len(self.q),
                        (self.a[-1]-self.a[0])/len(self.a))
                 )
@@ -359,13 +371,19 @@ class qphi_analysis(QWidget):
                 
                 if self.bkgd_sub_box.isChecked():
                     if isinstance(self.bkgd,type(None)):
-                        data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
+                        data = np.copy(load_proc_single_qphi(self.fn,row,col,
+                                    proc_h5_list=self.proc_h5_list,
+                                    proc_type="integrate2d"))
                     else:
                         bkgd = np.copy(self.bkgd).astype(np.float)
-                        data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
+                        data = np.copy(load_proc_single_qphi(self.fn,row,col,
+                                    proc_h5_list=self.proc_h5_list,
+                                    proc_type="integrate2d"))
                         data = data - bkgd
                 else:
-                    data = np.copy(load_proc_single_qphi(self.fn,row,col,proc_type="integrate2d"))
+                    data = np.copy(load_proc_single_qphi(self.fn,row,col,
+                                proc_h5_list=self.proc_h5_list,
+                                proc_type="integrate2d"))
                 data[np.isnan(data)] = 0
                 data[np.isinf(data)] = 0
                 vmin = float(self.pttn_vmin_input.text())
@@ -380,8 +398,12 @@ class qphi_analysis(QWidget):
                     click_reset = False
                 else:
                     click_reset = True
+                xlabel = r'$\rm{Q\,\,(\AA^{-1})}$'
+                ylabel = r'$\rm{\phi\,\,(^{o})}$'
                 self.subwindow.addImage(data,
                 origin=(0,-180),
+                xlabel = xlabel,
+                ylabel = ylabel,
                 scale=((self.q[-1]-self.q[0])/len(self.q),
                        (self.a[-1]-self.a[0])/len(self.a)),
                 colormap = colormap,
@@ -390,6 +412,7 @@ class qphi_analysis(QWidget):
                 #self.subwindow2.setColormap(colormap)
                 self.subwindow.setYAxisInverted(flag=True)
                 
+                print(self.subwindow.getXAxis.getLimits())
                 #toolBar = qt.QToolBar()
                 #self.subwindow.addToolBar(
                 #qt.Qt.BottomToolBarArea,

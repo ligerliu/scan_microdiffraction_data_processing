@@ -72,15 +72,7 @@ def save_Iq_as_h5(obj,save_path,name,
         #                  data=Iq,compression="gzip",
         #                  #compression_opts=9
         #                 )
-        #fc.attrs["origin_h5_path"]=h5_path_list
-        #try:
-        #    fc.attrs["origin_h5_path"]=h5_path_list
-        #except:
-        #    h5_list_idx = int(len(h5_path_list)/3)
-        #    fc.attrs["origin_h5_path_1"]=h5_path_list[:h5_list_idx]
-        #    fc.attrs["origin_h5_path_2"]=h5_path_list[h5_list_idx:int(2*h5_list_idx)]
-        #    fc.attrs["origin_h5_path_3"]=h5_path_list[int(2*h5_list_idx):]
-
+        fc.attrs["origin_h5_path"]=h5_path_list
         fc.create_dataset("path_idx",data=path_idx)
         fc.create_dataset("pttn_idx",data=pttn_idx)
         #fc.create_dataset("detector_distance",data=obj.ndetx)
@@ -105,13 +97,6 @@ def save_Iq_as_h5(obj,save_path,name,
                                         compression="gzip",
                                         compression_opts=9)
         fc.attrs["proc_h5_list"] = proc_h5_name_list
-        #try:
-        #    fc.attrs['proc_h5_list'] = proc_h5_name_list
-        #except:
-        #    fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
-        #    fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
-        #    fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_list_idx):]
-        
     print('file save finished')
 
         #fc.close()
