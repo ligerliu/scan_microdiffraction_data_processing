@@ -191,10 +191,11 @@ class Iq_calculate(QWidget):
                     self.ct34 /= np.nanmean(self.ct34)
             else:
                     self.ct34 = np.ones((len(self.pttn_idx.flatten()),))
+            #print(self.ct34,len(self.ct34))
             
             res = parallel_func(scan_calculate_Iq,
                            num_core,
-                           np.arange(len(self.path_idx.flatten())),
+                           np.arange(self.total_pttns),
                            h5_list   = self.h5_list,
                            path_idx  = self.path_idx.flatten(),
                            pttn_idx  = self.pttn_idx.flatten(),

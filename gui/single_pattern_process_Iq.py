@@ -129,7 +129,7 @@ class single_pattern_window(QWidget):
     def load_data(self):
         try:
             self.data_fn,_ = QFileDialog.getOpenFileName(self,"load_data","","")
-            self.data = fabio.open(self.data_fn).data
+            self.data = fabio.open(self.data_fn).data.astype(np.float16)
             #self.show_pattern()
         except Exception as e:
             print(e)
@@ -152,7 +152,7 @@ class single_pattern_window(QWidget):
             if 'npz' in self.mask_fn:
                 self.mask = np.load(self.mask_fn)['mask']
             else:
-                self.mask = fabio.open(self.mask_fn).data
+                self.mask = fabio.open(self.mask_fn).data.astype(np.bool)
         except Exception as e:
             print(e)
             pass
@@ -160,7 +160,7 @@ class single_pattern_window(QWidget):
     def load_bkgd(self):
         try:
             self.bkgd_fn,_ = QFileDialog.getOpenFileName(self,"load_bkgd","","")
-            self.bkgd = fabio.open(self.bkgd_fn).data
+            self.bkgd = fabio.open(self.bkgd_fn).data.astype(np.float16)
         except Exception as e:
             print(e)
             pass
@@ -213,7 +213,7 @@ class single_pattern_window(QWidget):
             colormap = Colormap(name = 'gray', normalization = 'linear',
                                 vmin = self.qphi_vmin, vmax = self.qphi_vmax)
             self.sub_qphi_win.addImage(qphi,colormap=colormap,
-                                       origin=(0,-180),
+                                       origin=(self.q[0],self.a[0]),
                                        scale=((self.q[-1]-self.q[0])/len(self.q),
                                        (self.a[-1]-self.a[0])/len(self.a)))
 

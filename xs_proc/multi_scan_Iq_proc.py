@@ -88,6 +88,7 @@ def save_Iq_as_h5(obj,save_path,name,
         if not os.path.exists(proc_h5_folder):
             os.mkdir(proc_h5_folder)
         idx_list = chunk_idx(total_pttn_num,single_h5_pttn_num)
+        #print(len(res),idx_list[-1])
         proc_h5_name_list = []
         for _ in range(len(h5_path_list)):
             proc_h5_name = "{}_{:05d}_proc.h5".format(name,_)
@@ -150,10 +151,10 @@ def auto_proc_Iq(obj,
                     ct34 /= np.nanmean(ct34)
             else:
                 ct34 = np.ones((len(pttn_idx.flatten()),))
-                        
+            #print(ct34,len(ct34))            
             res = parallel_func(scan_calculate_Iq,
                            num_core,
-                           np.arange(len(path_idx.flatten())),
+                           np.arange(total_pttns),
                            h5_list   = h5_list,
                            path_idx  = path_idx.flatten(),
                            pttn_idx  = pttn_idx.flatten(),

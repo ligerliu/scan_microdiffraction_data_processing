@@ -165,8 +165,8 @@ def scan_info(obj):
             else:
                 # ion chamber counts is not consist with sample.
                 scan_shape = h5_shape[0]
-                total_pttns = scan_shape[0]*scan_shape[1]
-                obj.ct34 = np.zeros((total_pttns,))
+                #total_pttns = scan_shape[0]*scan_shape[1]
+                #obj.ct34 = np.zeros((total_pttns,))
     
     # a soft problem here, we assum every h5 file is not including too much images. 
     # If the h5 is too large to load at once, this chunk size will cause memory problem.

@@ -197,7 +197,8 @@ class qphi_calculate(QWidget):
                     fc.attrs['proc_h5_list_1'] = proc_h5_name_list[:h5_list_idx]
                     fc.attrs['proc_h5_list_2'] = proc_h5_name_list[h5_list_idx:int(2*h5_list_idx)]
                     fc.attrs['proc_h5_list_3'] = proc_h5_name_list[int(2*h5_list_idx):]
-
+            
+            print('begin processing')
             res = parallel_func(scan_calculate_Iqphi,
                            num_core,
                            np.arange(len(self.h5_list)),

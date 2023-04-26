@@ -180,6 +180,7 @@ def auto_proc_qphi(obj,
             h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
                 
             qphi0,q,azi = calculate_Iqphi(0,h5_list[0],data_path,ai,
+                            radial_range = radial_range,
                             q_npts = q_npts,a_npts = a_npts)
                 
             with h5py.File(h5_name,'a') as f:

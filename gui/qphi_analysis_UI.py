@@ -338,7 +338,7 @@ class qphi_analysis(QWidget):
             ylabel = r'$\rm{\phi\,\,(^{o})}$'
             self.ave_window.addImage(qphi_ave,
                 colormap=colormap,
-                origin=(0,-180),
+                origin=(self.q[0],self.a[0]),
                 replace=True,
                 #resetzoom=False,
                 xlabel = xlabel,
@@ -401,7 +401,7 @@ class qphi_analysis(QWidget):
                 xlabel = r'$\rm{Q\,\,(\AA^{-1})}$'
                 ylabel = r'$\rm{\phi\,\,(^{o})}$'
                 self.subwindow.addImage(data,
-                origin=(0,-180),
+                origin=(self.q[0],self.a[0]),
                 xlabel = xlabel,
                 ylabel = ylabel,
                 scale=((self.q[-1]-self.q[0])/len(self.q),
@@ -412,7 +412,7 @@ class qphi_analysis(QWidget):
                 #self.subwindow2.setColormap(colormap)
                 self.subwindow.setYAxisInverted(flag=True)
                 
-                print(self.subwindow.getXAxis.getLimits())
+                #print(self.subwindow.getXAxis.getLimits())
                 #toolBar = qt.QToolBar()
                 #self.subwindow.addToolBar(
                 #qt.Qt.BottomToolBarArea,

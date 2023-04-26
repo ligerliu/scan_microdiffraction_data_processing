@@ -89,13 +89,26 @@ def auto_load_xrf(obj,
         if ('xmap3_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m = np.array(f[obj._data_name[nn]]['measurement']['xmap3_det0'])
             energy = np.arange(XRF_m.shape[1])*energy_calibration
-            XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
-            XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
+            XRF_m = np.nanmean(XRF_m[:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
+            if len(XRF_m) < scan_shape[0]*scan_shape[1]:
+                XRF_roi = np.zeros((scan_shape[0]*scan_shape[1],))
+                XRF_roi[:len(XRF_m)] = XRF_m
+            else:
+                XRF_roi = np.copy(XRF_m) 
+            XRF_roi = XRF_roi.reshape(scan_shape[0],scan_shape[1])
+            #XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
         elif ('xmap2_det0' in f[obj._data_name[nn]]['measurement']):
             XRF_m =  np.array(f[obj._data_name[nn]]['measurement']['xmap2_det0'])
             energy = np.arange(XRF_m.shape[1])*energy_calibration
-            XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
-            XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
+            XRF_m = np.nanmean(XRF_m[:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
+            if len(XRF_m) < scan_shape[0]*scan_shape[1]:
+                XRF_roi = np.zeros((scan_shape[0]*scan_shape[1],))
+                XRF_roi[:len(XRF_m)] = XRF_m 
+            else:
+                XRF_roi = np.copy(XRF_m)
+            XRF_roi = XRF_roi.reshape(scan_shape[0],scan_shape[1])
+            #XRF_m = XRF_m.reshape(scan_shape[0],scan_shape[1],XRF_m.shape[1])
+            #XRF_roi = np.nanmean(XRF_m[:,:,((energy>=energy_roi[0])&(energy<=energy_roi[1]))],axis=-1)
         else:
             print('xmap3 and xmap2 are not define in the measurement,/n please ensure xmap is included')
             return 
