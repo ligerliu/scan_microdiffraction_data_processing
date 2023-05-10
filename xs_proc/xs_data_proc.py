@@ -236,6 +236,7 @@ def scan_calculate_Iqphi(num,
                          idx_list = None,
                          single_h5_pttn_num = None,
                          proc_h5_name_list = None,
+                         h5_name = None,
                          **kwargs):
     if isinstance(method,type(None)):
         method = 'csr'
@@ -261,6 +262,15 @@ def scan_calculate_Iqphi(num,
                                         method   = method,
                                         **kwargs)
             map_qphi.append(qphi)
+    if num == 0:
+        if isinstance(h5_name,type(None)):
+            print('q and a are not saved for qphi pattern')
+            pass
+        else:
+            with h5py.File(h5_name,'a') as g:
+                fc = g['integrate2d']
+                fc.create_dataset("q",data=q)
+                fc.create_dataset("angle",data=a)
     with h5py.File(proc_h5_name_list[num],'a') as k:
         if "integrate2d" in list(k):
             del k['integrate2d']

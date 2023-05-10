@@ -1,9 +1,9 @@
 # ignore h5, which is too large to include
 *.h5
-!*.npz
+*.npz
 *.pyc
 *.edf
 *.tiff
 *.txt
 *.dat
-#*.png
+*.png

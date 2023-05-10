@@ -17,18 +17,18 @@ warnings.filterwarnings('ignore')
 from multi_scan_qphi_proc import *
 from multi_scan_Iq_proc import *
 
-proposal_path = "/data/visitor/md1371/id13/20230331/"
-proposal_num  = "md1371"
+proposal_path = "/data/visitor/ihsc1768/id13/20230415/"
+proposal_num  = "ihsc1768"
 data_path     = 'entry_0000/measurement/data'
 
 
 
 # for saving integration results, save_path is needed. save_path is defined by user
 
-save_path = '/data/visitor/md1371/id13/20230331/PROCESSED_DATA/'
+save_path = '/data/visitor/ihsc1768/id13/20230415/PROCESSED_DATA/'
 
-poni = '/data/visitor/md1371/id13/20230331/PROCESSED_DATA/poni_file/udetx_m840.poni'
-msk_file = '/data/visitor/md1371/id13/20230331/PROCESSED_DATA/edf_sum_file/udetx_mask.edf'
+poni = '/data/visitor/ihsc1768/id13/20230415/PROCESSED_DATA/poni_file/udetx_m860.poni'
+msk_file = '/data/visitor/ihsc1768/id13/20230415/PROCESSED_DATA/mask_file/udetx_m860.edf'
 mask    = fabio.open(msk_file).data
 #mask = np.savez(msk_file)
 
@@ -39,7 +39,8 @@ t1 = id13_h5_search(proposal_path,proposal_num)
 tim = time.time()
 
 sample_keywords = [
-    ['roi'],
+    #['roi'],
+    ['KTH_PCL_'],
 ]
 
 samples = samples_for_process(t1,sample_keywords)
@@ -51,12 +52,12 @@ samples_key_list = list(samples.keys())
 #    if samples[samples_key_list[_]][0][:-2] in processed_list:
 #
 #        del samples[samples_key_list[_]]
-
+#
 
 tim = time.time()
 
-auto_proc_qphi(t1,samples,save_path,num_core=12,q_npts=1600, a_npts=180,poni=poni,mask=mask,)#radial_range=(0,0.2))
+auto_proc_Iq(t1,samples,save_path,num_core=20,q_npts=1600,poni=poni,mask=mask,)#radial_range=(0,2))
+print('Iq calculation finished')
+auto_proc_qphi(t1,samples,save_path,num_core=20,q_npts=1600, a_npts=180,poni=poni,mask=mask,)#radial_range=(0,0.2))
 print('qphi calculation finished')
-#auto_proc_Iq(t1,samples,save_path,num_core=12,q_npts=1600,poni=poni,mask=mask,)#radial_range=(0,2))
-#print('Iq calculation finished')
 print(f'\n\n{time.time()-tim}')

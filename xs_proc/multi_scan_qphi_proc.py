@@ -179,9 +179,9 @@ def auto_proc_qphi(obj,
             name = obj._data_name[0].split('.')[0]
             h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
                 
-            qphi0,q,azi = calculate_Iqphi(0,h5_list[0],data_path,ai,
-                            radial_range = radial_range,
-                            q_npts = q_npts,a_npts = a_npts)
+            #qphi0,q,azi = calculate_Iqphi(0,h5_list[0],data_path,ai,
+            #                radial_range = radial_range,
+            #                q_npts = q_npts,a_npts = a_npts)
                 
             with h5py.File(h5_name,'a') as f:
                 if "integrate2d" in list(f):
@@ -189,8 +189,8 @@ def auto_proc_qphi(obj,
                 f.create_group("integrate2d")
                 fc = f['integrate2d']
                 fc.create_dataset("beam_intensity",data=ct34)
-                fc.create_dataset("q",data=q)
-                fc.create_dataset("angle",data=azi)
+                #fc.create_dataset("q",data=q)
+                #fc.create_dataset("angle",data=azi)
                 #fc.attrs["origin_h5_path"]=h5_list
                 try:
                     fc.attrs["origin_h5_path"]=h5_list
@@ -235,6 +235,7 @@ def auto_proc_qphi(obj,
                            radial_range = radial_range,
                            single_h5_pttn_num = single_h5_pttn_num,
                            proc_h5_name_list  = proc_h5_name_list,
+                           h5_name = h5_name,
                            **kwargs
                            )   
             print('process finished')

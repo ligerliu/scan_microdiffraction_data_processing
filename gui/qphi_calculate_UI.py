@@ -158,8 +158,8 @@ class qphi_calculate(QWidget):
             h5_name = os.path.join(hdf_folder,"{}_proc.h5".format(name))
             
             total_pttn_num     = self.total_pttns
-            qphi0,q,azi = calculate_Iqphi(0,self.h5_list[0],self.data_path,self.ai,
-                            q_npts = self.q_npts,a_npts = self.a_npts)
+            #qphi0,q,azi = calculate_Iqphi(0,self.h5_list[0],self.data_path,self.ai,
+            #                q_npts = self.q_npts,a_npts = self.a_npts)
 
             with h5py.File(h5_name,'a') as f:
                 #f.H5Pset_attr_pahse = 0
@@ -168,8 +168,8 @@ class qphi_calculate(QWidget):
                 f.create_group("integrate2d")
                 fc = f['integrate2d']
                 fc.create_dataset("beam_intensity",data=self.ct34)
-                fc.create_dataset("q",data=q)
-                fc.create_dataset("angle",data=azi)
+                #fc.create_dataset("q",data=q)
+                #fc.create_dataset("angle",data=azi)
                 try:
                     fc.attrs["origin_h5_path"]=self.h5_list
                 except:
@@ -216,6 +216,7 @@ class qphi_calculate(QWidget):
                            #radial_range = radial_range,
                            single_h5_pttn_num = single_h5_pttn_num,
                            proc_h5_name_list = proc_h5_name_list,
+                           h5_name = h5_name,
                            **kwargs
                            )
 
