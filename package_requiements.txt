@@ -10,3 +10,4 @@ jupyter      1.0.0
 pyFAI        0.19.0
 hdf5plugin   2.3.2
 lmfit        1.0.1
+silx         0.15.0
